@@ -26,9 +26,9 @@ export default function ProtectedRoute({ role }) {
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (checking) return <Spinner />;
 
-  if (role && user?.role !== role) {
+  if (role && user?.user_type !== role) {
     // Redirect to the correct portal instead of showing a blank page
-    return <Navigate to={user?.role === 'ADMIN' ? '/admin' : '/school'} replace />;
+    return <Navigate to={user?.user_type === 'ADMIN' ? '/admin' : '/school'} replace />;
   }
 
   return <Outlet />;

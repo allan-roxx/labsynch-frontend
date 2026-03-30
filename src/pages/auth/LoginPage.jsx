@@ -34,7 +34,7 @@ export default function LoginPage() {
     if (result.success) {
       // Redirect based on role (stored in user after fetchMe)
       const { user } = useAuthStore.getState();
-      if (user?.role === 'ADMIN') navigate('/admin', { replace: true });
+      if (user?.user_type === 'ADMIN') navigate('/admin', { replace: true });
       else navigate('/school', { replace: true });
     } else {
       // Map backend field errors

@@ -17,8 +17,8 @@ const useAuthStore = create((set, get) => ({
   error: null,
 
   // ── Computed helpers ───────────────────────────────────────────────────────
-  isAdmin: () => get().user?.role === 'ADMIN',
-  isSchool: () => get().user?.role === 'SCHOOL',
+  isAdmin: () => get().user?.user_type === 'ADMIN',
+  isSchool: () => get().user?.user_type === 'SCHOOL',
 
   // ── Actions ────────────────────────────────────────────────────────────────
   /**
