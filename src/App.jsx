@@ -26,7 +26,9 @@ import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage';
 // School pages
 import SchoolHomePage from './pages/school/SchoolHomePage';
 import SchoolCatalogPage from './pages/school/SchoolCatalogPage';
+import SchoolEquipmentDetailPage from './pages/school/SchoolEquipmentDetailPage';
 import SchoolBookingsPage from './pages/school/SchoolBookingsPage';
+import SchoolBookingDetailPage from './pages/school/SchoolBookingDetailPage';
 import SchoolCartPage from './pages/school/SchoolCartPage';
 import SchoolPaymentsPage from './pages/school/SchoolPaymentsPage';
 import SchoolProfilePage from './pages/school/SchoolProfilePage';
@@ -61,7 +63,9 @@ export default function App() {
           <Route element={<SchoolLayout />}>
             <Route path="/school" element={<SchoolHomePage />} />
             <Route path="/school/catalog" element={<SchoolCatalogPage />} />
+            <Route path="/school/equipment/:id" element={<SchoolEquipmentDetailPage />} />
             <Route path="/school/bookings" element={<SchoolBookingsPage />} />
+            <Route path="/school/bookings/:id" element={<SchoolBookingDetailPage />} />
             <Route path="/school/cart" element={<SchoolCartPage />} />
             <Route path="/school/payments" element={<SchoolPaymentsPage />} />
             <Route path="/school/profile" element={<SchoolProfilePage />} />
