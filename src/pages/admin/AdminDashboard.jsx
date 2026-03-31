@@ -11,7 +11,7 @@ export default function AdminDashboard() {
           </div>
         ))}
       </div>
-      <p className="mt-8 text-sm text-gray-400">Dashboard widgets coming soon.</p>
+      <p className="mt-8 text-sm text-gray-400">Dashboard widgets is in development progress</p>
     </div>
   );
 }
