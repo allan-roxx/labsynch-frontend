@@ -3,12 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { bookingsApi } from '../../api/endpoints';
 import StatusBadge from '../../components/ui/StatusBadge';
 
+// Updated state machine statuses
 const ALL_STATUSES = [
   'ALL',
   'PENDING',
-  'CONFIRMED',
-  'PAID',
-  'ISSUED',
+  'APPROVED',
+  'RESERVED',
+  'DISPATCHED',
+  'IN_USE',
   'RETURNED',
   'COMPLETED',
   'OVERDUE',
@@ -30,12 +32,10 @@ export default function SchoolBookingsPage() {
     try {
       const params = { page, page_size: 10, ordering: '-created_at' };
       if (search) params.search = search;
+      if (statusFilter !== 'ALL') params.status = statusFilter;
       const res = await bookingsApi.list(params);
       const payload = res?.data ?? res;
-      let results = payload?.results || (Array.isArray(payload) ? payload : []);
-      if (statusFilter !== 'ALL') {
-        results = results.filter((b) => b.status === statusFilter);
-      }
+      const results = payload?.results || (Array.isArray(payload) ? payload : []);
       setBookings(results);
       setPagination({ count: payload?.count || 0, next: payload?.next, previous: payload?.previous });
     } catch (err) {
@@ -106,7 +106,7 @@ export default function SchoolBookingsPage() {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {s === 'ALL' ? 'All' : s.charAt(0) + s.slice(1).toLowerCase()}
+              {s === 'ALL' ? 'All' : s.charAt(0) + s.slice(1).toLowerCase().replace('_', ' ')}
             </button>
           ))}
         </div>
@@ -141,30 +141,17 @@ export default function SchoolBookingsPage() {
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="animate-pulse">
-                  <td className="px-5 py-3">
-                    <div className="h-4 bg-gray-200 rounded w-32" />
-                  </td>
-                  <td className="px-5 py-3 hidden md:table-cell">
-                    <div className="h-4 bg-gray-200 rounded w-24" />
-                  </td>
-                  <td className="px-5 py-3 hidden md:table-cell">
-                    <div className="h-4 bg-gray-200 rounded w-24" />
-                  </td>
-                  <td className="px-5 py-3 hidden sm:table-cell">
-                    <div className="h-4 bg-gray-200 rounded w-20 ml-auto" />
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="h-5 bg-gray-200 rounded-full w-20 mx-auto" />
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="h-7 bg-gray-200 rounded w-14 ml-auto" />
-                  </td>
+                  <td className="px-5 py-3"><div className="h-4 bg-gray-200 rounded w-32" /></td>
+                  <td className="px-5 py-3 hidden md:table-cell"><div className="h-4 bg-gray-200 rounded w-24" /></td>
+                  <td className="px-5 py-3 hidden md:table-cell"><div className="h-4 bg-gray-200 rounded w-24" /></td>
+                  <td className="px-5 py-3 hidden sm:table-cell"><div className="h-4 bg-gray-200 rounded w-20 ml-auto" /></td>
+                  <td className="px-5 py-3"><div className="h-5 bg-gray-200 rounded-full w-20 mx-auto" /></td>
+                  <td className="px-5 py-3"><div className="h-7 bg-gray-200 rounded w-14 ml-auto" /></td>
                 </tr>
               ))
             ) : bookings.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-5 py-14 text-center text-gray-400">
-                  <div className="text-4xl mb-2">📋</div>
                   <p className="text-sm">No bookings found.</p>
                   <Link
                     to="/school/catalog"

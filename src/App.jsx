@@ -22,6 +22,8 @@ import AdminReturnsPage from './pages/admin/AdminReturnsPage';
 import AdminMaintenancePage from './pages/admin/AdminMaintenancePage';
 import AdminSchoolsPage from './pages/admin/AdminSchoolsPage';
 import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage';
+import AdminTransportZonesPage from './pages/admin/AdminTransportZonesPage';
+import AdminReportsPage from './pages/admin/AdminReportsPage';
 
 // School pages
 import SchoolHomePage from './pages/school/SchoolHomePage';
@@ -55,6 +57,8 @@ export default function App() {
             <Route path="/admin/maintenance" element={<AdminMaintenancePage />} />
             <Route path="/admin/schools" element={<AdminSchoolsPage />} />
             <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
+            <Route path="/admin/transport-zones" element={<AdminTransportZonesPage />} />
+            <Route path="/admin/reports" element={<AdminReportsPage />} />
           </Route>
         </Route>
 

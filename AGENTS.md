@@ -6,6 +6,8 @@ ALSO REFER TO THE WIREFRAMES IMAGES PRESENT IN THE DIRECTORY wireframes/ for exa
 
 Refer to the system architecture [here](./docs/system-architecture.md) and API documentation in the backend codebase for detailed information on available endpoints, expected request/response formats, and authentication flows. This document focuses on the frontend-specific rules and guidelines to ensure a consistent and maintainable codebase.
 
+There have been additional features added to the labsych architecture that are not present in the system architecture document. Refer to the `schema.json` file for the exact API endpoint structure and response formats. and also the `docs/updated-frontend.md` file for additional information on the frontend architecture.
+
 ## 1. Project Context
 LabSynch is a multi-tenant laboratory equipment rental platform.
 - **Backend**: Django REST Framework API.
@@ -70,4 +72,4 @@ You must structurally separate the `ADMIN` UI from the `SCHOOL` UI.
 2. **Component architecture:** Split reusable UI elements (Buttons, Modals, Inputs) out from Page-level layout components.
 3. **TypeScript:** Strongly typing API responses natively matching the Django schemas is heavily encouraged.
 
-*Note: Look at the backend `apps/**/urls.py` files if you are ever confused about the exact path or required ID parameters of an endpoint.*
+*Note: Reference the `schema.json` file for the exact API endpoint structure and response formats.*

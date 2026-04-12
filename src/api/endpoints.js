@@ -44,18 +44,41 @@ export const equipmentApi = {
   checkAvailability: (id, data) => client.post(`/api/equipment/${id}/availability/`, data),
 };
 
+export const cartApi = {
+  /** GET /api/cart/ — fetch the server-side cart */
+  get: () => client.get('/api/cart/'),
+  /** PATCH /api/cart/ — set dates, instructions, requires_transport */
+  patch: (data) => client.patch('/api/cart/', data),
+  /** DELETE /api/cart/ — clear entire cart */
+  clear: () => client.delete('/api/cart/'),
+  /** POST /api/cart/items/ — add/update item */
+  addItem: (data) => client.post('/api/cart/items/', data),
+  /** PATCH /api/cart/items/{item_id}/ — update quantity */
+  updateItem: (itemId, data) => client.patch(`/api/cart/items/${itemId}/`, data),
+  /** DELETE /api/cart/items/{item_id}/ — remove item */
+  removeItem: (itemId) => client.delete(`/api/cart/items/${itemId}/`),
+  /** POST /api/cart/checkout/ — convert cart → Booking */
+  checkout: () => client.post('/api/cart/checkout/'),
+};
+
 export const bookingsApi = {
   list: (params) => client.get('/api/bookings/', { params }),
   retrieve: (id) => client.get(`/api/bookings/${id}/`),
   create: (data) => client.post('/api/bookings/', data),
   update: (id, data) => client.patch(`/api/bookings/${id}/`, data),
   cancel: (id) => client.post(`/api/bookings/${id}/cancel/`, {}),
+  approve: (id) => client.post(`/api/bookings/${id}/approve/`),
+  complete: (id) => client.post(`/api/bookings/${id}/complete/`),
+  /** Returns PDF blob — pipe through downloadPdf() */
+  contract: (id) => client.get(`/api/bookings/${id}/contract/`, { responseType: 'blob' }),
 };
 
 export const paymentsApi = {
   list: (params) => client.get('/api/payments/', { params }),
   retrieve: (id) => client.get(`/api/payments/${id}/`),
   stkPush: (data) => client.post('/api/payments/mpesa_stk_push/', data),
+  /** Returns PDF blob — pipe through downloadPdf() */
+  receipt: (id) => client.get(`/api/payments/${id}/receipt/`, { responseType: 'blob' }),
 };
 
 export const issuancesApi = {
@@ -98,3 +121,40 @@ export const auditLogsApi = {
   list: (params) => client.get('/api/audit-logs/', { params }),
   retrieve: (id) => client.get(`/api/audit-logs/${id}/`),
 };
+
+export const transportZonesApi = {
+  list: (params) => client.get('/api/transport-zones/', { params }),
+  retrieve: (id) => client.get(`/api/transport-zones/${id}/`),
+  create: (data) => client.post('/api/transport-zones/', data),
+  update: (id, data) => client.patch(`/api/transport-zones/${id}/`, data),
+  delete: (id) => client.delete(`/api/transport-zones/${id}/`),
+};
+
+export const reportsApi = {
+  dashboard: () => client.get('/api/reports/dashboard/'),
+  bookings: (params) => client.get('/api/reports/bookings/', { params }),
+  financial: (params) => client.get('/api/reports/financial/', { params }),
+  equipment: () => client.get('/api/reports/equipment/'),
+  clients: () => client.get('/api/reports/clients/'),
+};
+
+/**
+ * downloadPdf — trigger a browser download from a Blob API response.
+ * The PDF endpoints return responseType:'blob' so pass the raw response.
+ *
+ * Example:
+ *   const res = await bookingsApi.contract(bookingId);
+ *   downloadPdf(res, `contract-${bookingRef}.pdf`);
+ */
+export function downloadPdf(blobOrResponse, filename) {
+  const blob =
+    blobOrResponse instanceof Blob ? blobOrResponse : blobOrResponse?.data ?? blobOrResponse;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

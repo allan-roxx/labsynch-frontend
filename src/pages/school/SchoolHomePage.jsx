@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
-import { bookingsApi, paymentsApi } from '../../api/endpoints';
+import { bookingsApi, paymentsApi, usersApi } from '../../api/endpoints';
 import { StatusBadge } from '../../components/ui';
+
+// Updated for new booking state machine
+const ACTIVE_STATUSES = new Set(['PENDING', 'APPROVED', 'RESERVED', 'DISPATCHED', 'IN_USE']);
+const NEEDS_PAYMENT_STATUSES = new Set(['APPROVED']);
 
 // ── Stat card ──────────────────────────────────────────────────────────────────
 function StatCard({ label, value, sub }) {
@@ -15,28 +19,27 @@ function StatCard({ label, value, sub }) {
   );
 }
 
-// ── Active bookings statuses ───────────────────────────────────────────────────
-const ACTIVE_STATUSES = new Set(['PENDING', 'CONFIRMED', 'PAID', 'ISSUED']);
-const NEEDS_PAYMENT_STATUSES = new Set(['CONFIRMED']);
-
 export default function SchoolHomePage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
 
   const [bookings, setBookings] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [schoolProfile, setSchoolProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       bookingsApi.list({ page_size: 100, ordering: 'pickup_date' }),
       paymentsApi.list({ page_size: 100 }),
+      usersApi.mySchoolProfile(),
     ])
-      .then(([bRes, pRes]) => {
+      .then(([bRes, pRes, spRes]) => {
         setBookings(bRes.data?.results ?? bRes.data ?? []);
         setPayments(pRes.data?.results ?? pRes.data ?? []);
+        setSchoolProfile(spRes?.data ?? spRes);
       })
-      .catch(() => {/* API errors handled by interceptor */})
+      .catch(() => {/* API errors handled by interceptor */ })
       .finally(() => setLoading(false));
   }, []);
 
@@ -55,24 +58,45 @@ export default function SchoolHomePage() {
     .filter((b) => ACTIVE_STATUSES.has(b.status))
     .slice(0, 5);
 
-  const schoolName = user?.school_profile?.school_name ?? user?.full_name ?? 'School';
+  const schoolName = schoolProfile?.school_name ?? user?.school_profile?.school_name ?? user?.full_name ?? 'School';
+  const liabilityStatus = schoolProfile?.liability_status ?? user?.school_profile?.liability_status;
 
   const fmt = (n) =>
     n === 0 ? 'KES 0' : `KES ${n.toLocaleString('en-KE', { minimumFractionDigits: 0 })}`;
 
   return (
     <div className="space-y-6">
+      {/* ── Liability warning banner ── */}
+      {liabilityStatus === 'HAS_OUTSTANDING' && (
+        <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-5 py-4">
+          <svg className="mt-0.5 h-5 w-5 shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-red-800">
+              Outstanding Damage Liabilities
+            </p>
+            <p className="mt-0.5 text-sm text-red-700">
+              You have unresolved damage liabilities. New bookings are blocked until resolved.{' '}
+              <Link to="/school/bookings" className="underline font-medium">
+                View Bookings →
+              </Link>
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Welcome banner ── */}
       <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-6 py-5">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Welcome back, {schoolName}!</h1>
           <span className="mt-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
-            ● Active
+            Active
           </span>
         </div>
         <button
           onClick={() => navigate('/school/catalog')}
-          className="rounded-md bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
+          className="rounded-md bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
         >
           MAKE A BOOKING
         </button>
@@ -171,8 +195,9 @@ function BookingRow({ booking, onRefresh }) {
     }
   };
 
-  const canPay = booking.status === 'CONFIRMED';
-  const canCancel = booking.status === 'PENDING' || booking.status === 'CONFIRMED';
+  // Updated for new state machine
+  const canPay = booking.status === 'APPROVED';
+  const canCancel = ['PENDING', 'APPROVED', 'RESERVED'].includes(booking.status);
 
   return (
     <tr className="hover:bg-gray-50 transition-colors">
@@ -187,7 +212,7 @@ function BookingRow({ booking, onRefresh }) {
         <div className="flex items-center gap-1.5">
           <ActionBtn onClick={() => navigate(`/school/bookings/${booking.id}`)}>View</ActionBtn>
           {canPay && (
-            <ActionBtn onClick={() => navigate(`/school/bookings/${booking.id}/pay`)} variant="pay">
+            <ActionBtn onClick={() => navigate(`/school/bookings/${booking.id}`)} variant="pay">
               Pay
             </ActionBtn>
           )}
@@ -218,4 +243,3 @@ function ActionBtn({ children, onClick, variant = 'default', disabled }) {
     </button>
   );
 }
-

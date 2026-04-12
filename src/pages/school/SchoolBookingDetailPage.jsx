@@ -1,92 +1,91 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { bookingsApi, paymentsApi, usersApi } from '../../api/endpoints';
+import { bookingsApi, paymentsApi, usersApi, downloadPdf } from '../../api/endpoints';
 import StatusBadge from '../../components/ui/StatusBadge';
 
 // -----------------------------------------------------------------------------
-// Progress Stepper
+// New 8-state Progress Stepper
 // -----------------------------------------------------------------------------
 const STEPS = [
-  { label: 'Booking Created' },
-  { label: 'Confirmed' },
-  { label: 'Payment' },
-  { label: 'Equipment Issued' },
-  { label: 'Completed' },
+  { key: 'PENDING',    label: 'Submitted' },
+  { key: 'APPROVED',   label: 'Approved' },
+  { key: 'RESERVED',   label: 'Reserved' },
+  { key: 'DISPATCHED', label: 'Dispatched' },
+  { key: 'IN_USE',     label: 'In Use' },
+  { key: 'RETURNED',   label: 'Returned' },
+  { key: 'COMPLETED',  label: 'Completed' },
 ];
 
-const STATUS_STEP = {
-  PENDING: 1,
-  CONFIRMED: 2,
-  PAID: 3,
-  ISSUED: 4,
-  RETURNED: 5,
-  COMPLETED: 5,
-  OVERDUE: 4,
-  CANCELLED: 0,
-};
+function stepIndex(status) {
+  const i = STEPS.findIndex((s) => s.key === status);
+  if (i >= 0) return i;
+  if (status === 'OVERDUE') return 4; // treat as IN_USE step
+  return -1; // CANCELLED
+}
 
 function ProgressStepper({ status }) {
-  const currentStep = STATUS_STEP[status] ?? 1;
+  const current = stepIndex(status);
+  const cancelled = status === 'CANCELLED';
+  const overdue   = status === 'OVERDUE';
+
   return (
-    <div className="flex items-start">
-      {STEPS.map((step, idx) => {
-        const stepNum = idx + 1;
-        const isDone = stepNum < currentStep && status !== 'CANCELLED';
-        const isCurrent = stepNum === currentStep && status !== 'CANCELLED';
-        return (
-          <div key={step.label} className="flex items-center flex-1 last:flex-none">
-            <div className="flex flex-col items-center">
-              <div
-                className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${
-                  status === 'CANCELLED'
-                    ? 'bg-gray-100 text-gray-400'
-                    : isDone
-                    ? 'bg-blue-600 text-white'
-                    : isCurrent
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-400'
-                }`}
-              >
-                {isDone ? (
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={3}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                ) : (
-                  stepNum
-                )}
+    <div>
+      {(cancelled || overdue) && (
+        <div className={`mb-4 px-4 py-2.5 rounded-lg text-sm font-medium ${
+          cancelled ? 'bg-gray-100 text-gray-600' : 'bg-red-50 text-red-700 border border-red-200'
+        }`}>
+          {cancelled ? 'This booking has been cancelled.' : 'This booking is overdue.'}
+        </div>
+      )}
+      <div className="flex items-start overflow-x-auto pb-2">
+        {STEPS.map((step, idx) => {
+          const isDone    = !cancelled && idx <  current;
+          const isCurrent = !cancelled && idx === current;
+          return (
+            <div key={step.key} className="flex items-center flex-1 last:flex-none min-w-0">
+              <div className="flex flex-col items-center">
+                <div
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${
+                    cancelled
+                      ? 'bg-gray-100 text-gray-400'
+                      : overdue && isCurrent
+                      ? 'bg-red-500 text-white'
+                      : isDone
+                      ? 'bg-blue-600 text-white'
+                      : isCurrent
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-400'
+                  }`}
+                >
+                  {isDone ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    idx + 1
+                  )}
+                </div>
+                <span
+                  className={`mt-2 text-xs text-center leading-tight w-16 ${
+                    (isDone || isCurrent) && !cancelled
+                      ? 'text-gray-800 font-medium'
+                      : 'text-gray-400'
+                  }`}
+                >
+                  {step.label}
+                </span>
               </div>
-              <span
-                className={`mt-2 text-xs text-center leading-tight w-20 ${
-                  (isDone || isCurrent) && status !== 'CANCELLED'
-                    ? 'text-gray-800 font-medium'
-                    : 'text-gray-400'
-                }`}
-              >
-                {step.label}
-              </span>
+              {idx < STEPS.length - 1 && (
+                <div
+                  className={`flex-1 h-0.5 mx-1 mb-6 ${
+                    !cancelled && idx < current ? 'bg-blue-500' : 'bg-gray-200'
+                  }`}
+                />
+              )}
             </div>
-            {idx < STEPS.length - 1 && (
-              <div
-                className={`flex-1 h-0.5 mx-1 mb-6 ${
-                  stepNum < currentStep && status !== 'CANCELLED'
-                    ? 'bg-blue-500'
-                    : 'bg-gray-200'
-                }`}
-              />
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -144,7 +143,6 @@ function PaymentModal({ booking, onClose, onSuccess }) {
 
         {success ? (
           <div className="py-4 text-center">
-            <div className="text-5xl mb-3">📲</div>
             <p className="text-green-700 font-medium">
               STK Push sent! Check your phone to complete payment.
             </p>
@@ -197,6 +195,7 @@ export default function SchoolBookingDetailPage() {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelError, setCancelError] = useState('');
   const [showPayModal, setShowPayModal] = useState(false);
+  const [downloadingContract, setDownloadingContract] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -240,6 +239,18 @@ export default function SchoolBookingDetailPage() {
     }
   };
 
+  const handleDownloadContract = async () => {
+    setDownloadingContract(true);
+    try {
+      const res = await bookingsApi.contract(id);
+      downloadPdf(res, `contract-${booking.booking_reference}.pdf`);
+    } catch (err) {
+      alert(err?.message || 'Failed to download contract.');
+    } finally {
+      setDownloadingContract(false);
+    }
+  };
+
   const totalDays = booking
     ? Math.max(
         0,
@@ -278,20 +289,25 @@ export default function SchoolBookingDetailPage() {
     );
   }
 
-  const canPay = booking.status === 'CONFIRMED';
-  const canCancel = ['PENDING', 'CONFIRMED'].includes(booking.status);
+  // Updated state machine logic
+  const canPay    = booking.status === 'APPROVED';
+  const canCancel = ['PENDING', 'APPROVED', 'RESERVED'].includes(booking.status);
+
+  // Cost breakdown
+  const rentalSubtotal = parseFloat(booking.total_amount || 0);
+  const transportCost  = parseFloat(booking.transport_cost || 0);
+  const personnelCost  = booking.booking_items?.reduce(
+    (sum, item) => sum + parseFloat(item.personnel_cost || 0),
+    0,
+  ) ?? 0;
 
   return (
     <div>
       {/* Breadcrumb */}
       <nav className="text-sm text-gray-500 mb-5 flex items-center gap-1">
-        <Link to="/school" className="hover:text-gray-800">
-          Dashboard
-        </Link>
+        <Link to="/school" className="hover:text-gray-800">Dashboard</Link>
         <span>/</span>
-        <Link to="/school/bookings" className="hover:text-gray-800">
-          My Bookings
-        </Link>
+        <Link to="/school/bookings" className="hover:text-gray-800">My Bookings</Link>
         <span>/</span>
         <span className="text-gray-800 font-medium">{booking.booking_reference}</span>
       </nav>
@@ -328,10 +344,11 @@ export default function SchoolBookingDetailPage() {
             </button>
           )}
           <button
-            className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
-            title="Download Invoice (coming soon)"
+            onClick={handleDownloadContract}
+            disabled={downloadingContract}
+            className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
           >
-            Download Invoice
+            {downloadingContract ? 'Downloading…' : 'Download Contract'}
           </button>
           {canCancel && (
             <button
@@ -339,7 +356,7 @@ export default function SchoolBookingDetailPage() {
               disabled={cancelLoading}
               className="px-4 py-2 border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
             >
-              {cancelLoading ? 'Cancelling…' : 'Cancel'}
+              {cancelLoading ? 'Cancelling…' : 'Cancel Booking'}
             </button>
           )}
         </div>
@@ -355,18 +372,8 @@ export default function SchoolBookingDetailPage() {
         {/* School Information */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2 text-sm">
-            <svg
-              className="w-4 h-4 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-              />
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
             School Information
           </h3>
@@ -380,24 +387,20 @@ export default function SchoolBookingDetailPage() {
             {schoolProfile?.contact_person && (
               <div className="flex justify-between gap-3">
                 <dt className="text-gray-500 shrink-0">Contact Person</dt>
-                <dd className="font-medium text-gray-900 text-right">
-                  {schoolProfile.contact_person}
-                </dd>
+                <dd className="font-medium text-gray-900 text-right">{schoolProfile.contact_person}</dd>
               </div>
             )}
             {schoolProfile?.user_email && (
               <div className="flex justify-between gap-3">
                 <dt className="text-gray-500 shrink-0">Email</dt>
-                <dd className="font-medium text-gray-900 text-right break-all">
-                  {schoolProfile.user_email}
-                </dd>
+                <dd className="font-medium text-gray-900 text-right break-all">{schoolProfile.user_email}</dd>
               </div>
             )}
-            {schoolProfile?.physical_address && (
+            {schoolProfile?.liability_status && (
               <div className="flex justify-between gap-3">
-                <dt className="text-gray-500 shrink-0">Address</dt>
-                <dd className="font-medium text-gray-900 text-right">
-                  {schoolProfile.physical_address}
+                <dt className="text-gray-500 shrink-0">Liability</dt>
+                <dd>
+                  <StatusBadge status={schoolProfile.liability_status} />
                 </dd>
               </div>
             )}
@@ -413,18 +416,8 @@ export default function SchoolBookingDetailPage() {
         {/* Booking Details */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2 text-sm">
-            <svg
-              className="w-4 h-4 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             Booking Details
           </h3>
@@ -432,33 +425,27 @@ export default function SchoolBookingDetailPage() {
             <div className="flex justify-between gap-3">
               <dt className="text-gray-500">Pickup Date</dt>
               <dd className="font-medium text-gray-900">
-                {new Date(booking.pickup_date).toLocaleDateString('en-KE', {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric',
-                })}
+                {new Date(booking.pickup_date).toLocaleDateString('en-KE', { year: 'numeric', month: 'short', day: 'numeric' })}
               </dd>
             </div>
             <div className="flex justify-between gap-3">
               <dt className="text-gray-500">Return Date</dt>
               <dd className="font-medium text-gray-900">
-                {new Date(booking.return_date).toLocaleDateString('en-KE', {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric',
-                })}
+                {new Date(booking.return_date).toLocaleDateString('en-KE', { year: 'numeric', month: 'short', day: 'numeric' })}
               </dd>
             </div>
             <div className="flex justify-between gap-3">
               <dt className="text-gray-500">Total Days</dt>
-              <dd className="font-medium text-gray-900">
-                {totalDays} day{totalDays !== 1 ? 's' : ''}
-              </dd>
+              <dd className="font-medium text-gray-900">{totalDays} day{totalDays !== 1 ? 's' : ''}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-gray-500">Total Amount</dt>
-              <dd className="font-bold text-gray-900">
-                KES {parseFloat(booking.total_amount || 0).toLocaleString()}
+              <dt className="text-gray-500">Delivery</dt>
+              <dd className="font-medium text-gray-900">
+                {booking.requires_transport ? (
+                  <span className="text-blue-700">Delivery Requested</span>
+                ) : (
+                  <span className="text-gray-500">Self-Pickup</span>
+                )}
               </dd>
             </div>
             {booking.special_instructions && (
@@ -474,25 +461,18 @@ export default function SchoolBookingDetailPage() {
       </div>
 
       {/* ── Booking items table ── */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-5">
         <div className="px-5 py-3 border-b border-gray-100">
           <h3 className="font-semibold text-gray-800 text-sm">Booked Equipment</h3>
         </div>
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                Equipment
-              </th>
-              <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                Qty
-              </th>
-              <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide hidden sm:table-cell">
-                Unit / Day
-              </th>
-              <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                Subtotal
-              </th>
+              <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Equipment</th>
+              <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Qty</th>
+              <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide hidden sm:table-cell">Unit/Day</th>
+              <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide hidden sm:table-cell">Personnel</th>
+              <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Subtotal</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -506,28 +486,30 @@ export default function SchoolBookingDetailPage() {
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
                         {primaryImage ? (
-                          <img
-                            src={primaryImage.image_url}
-                            alt={item.equipment.equipment_name}
-                            className="w-full h-full object-cover"
-                          />
+                          <img src={primaryImage.image_url} alt={item.equipment.equipment_name} className="w-full h-full object-cover" />
                         ) : (
-                          <span className="text-gray-300 text-lg">🔬</span>
+                          <span className="text-gray-300 text-lg">—</span>
                         )}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">
-                          {item.equipment.equipment_name}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {item.equipment.category?.category_name}
-                        </p>
+                        <p className="font-medium text-gray-900">{item.equipment.equipment_name}</p>
+                        <p className="text-xs text-gray-400">{item.equipment.category?.category_name}</p>
+                        {item.equipment.requires_personnel && (
+                          <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">
+                            Technician Required
+                          </span>
+                        )}
                       </div>
                     </div>
                   </td>
                   <td className="px-5 py-3 text-right text-gray-700">{item.quantity}</td>
                   <td className="px-5 py-3 text-right text-gray-700 hidden sm:table-cell">
                     KES {parseFloat(item.unit_price).toLocaleString()}
+                  </td>
+                  <td className="px-5 py-3 text-right text-gray-700 hidden sm:table-cell">
+                    {parseFloat(item.personnel_cost || 0) > 0
+                      ? `KES ${parseFloat(item.personnel_cost).toLocaleString()}`
+                      : '—'}
                   </td>
                   <td className="px-5 py-3 text-right font-semibold text-gray-900">
                     KES {parseFloat(item.subtotal).toLocaleString()}
@@ -536,26 +518,34 @@ export default function SchoolBookingDetailPage() {
               );
             })}
           </tbody>
-          <tfoot className="bg-gray-50">
-            <tr>
-              <td
-                colSpan={3}
-                className="px-5 py-3 text-right font-semibold text-gray-700 text-sm hidden sm:table-cell"
-              >
-                Total
-              </td>
-              <td
-                colSpan={2}
-                className="px-5 py-3 text-right font-semibold text-gray-700 text-sm sm:hidden"
-              >
-                Total
-              </td>
-              <td className="px-5 py-3 text-right font-bold text-gray-900">
-                KES {parseFloat(booking.total_amount || 0).toLocaleString()}
-              </td>
-            </tr>
-          </tfoot>
         </table>
+      </div>
+
+      {/* ── Cost Summary ── */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <h3 className="font-semibold text-gray-800 mb-4 text-sm">Cost Summary</h3>
+        <dl className="space-y-2 text-sm">
+          <div className="flex justify-between text-gray-600">
+            <dt>Rental Subtotal</dt>
+            <dd>KES {rentalSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</dd>
+          </div>
+          {personnelCost > 0 && (
+            <div className="flex justify-between text-gray-600">
+              <dt>Personnel Cost</dt>
+              <dd>KES {personnelCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</dd>
+            </div>
+          )}
+          {transportCost > 0 && (
+            <div className="flex justify-between text-gray-600">
+              <dt>Transport Cost</dt>
+              <dd>KES {transportCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</dd>
+            </div>
+          )}
+          <div className="border-t border-gray-100 pt-3 flex justify-between font-bold text-gray-900">
+            <dt>Total</dt>
+            <dd>KES {parseFloat(booking.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</dd>
+          </div>
+        </dl>
       </div>
 
       {/* M-Pesa payment modal */}

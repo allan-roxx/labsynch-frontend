@@ -72,6 +72,24 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    label: 'Transport Zones',
+    to: '/admin/transport-zones',
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Reports',
+    to: '/admin/reports',
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    ),
+  },
 ];
 
 export default function AdminLayout() {
@@ -87,7 +105,7 @@ export default function AdminLayout() {
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       {/* ── Sidebar ── */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-16'} flex flex-col bg-gray-900 text-white transition-all duration-200 shrink-0`}>
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-16'} flex flex-col bg-blue-900 text-white transition-all duration-200 shrink-0`}>
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-gray-800 px-4">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600">
@@ -106,10 +124,9 @@ export default function AdminLayout() {
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                `flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${isActive
+                  ? 'bg-blue-700 text-white'
+                  : 'text-gray-400 hover:bg-blue-800 hover:text-white'
                 }`
               }
             >

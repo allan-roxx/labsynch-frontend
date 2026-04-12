@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { equipmentApi, equipmentCategoriesApi } from '../../api/endpoints';
-import useCartStore from '../../store/cartStore';
+import { equipmentApi, equipmentCategoriesApi, cartApi } from '../../api/endpoints';
 
 function ConditionBadge({ condition }) {
   const map = {
@@ -23,7 +22,7 @@ function EquipmentCard({ equipment }) {
   const primaryImage = equipment.images?.find((img) => img.is_primary) || equipment.images?.[0];
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200 flex flex-col">
-      <div className="h-44 bg-gray-100 flex items-center justify-center overflow-hidden">
+      <div className="h-44 bg-gray-100 flex items-center justify-center overflow-hidden relative">
         {primaryImage ? (
           <img
             src={primaryImage.image_url}
@@ -31,7 +30,12 @@ function EquipmentCard({ equipment }) {
             className="w-full h-full object-cover"
           />
         ) : (
-          <span className="text-gray-300 text-5xl">🔬</span>
+          <span className="text-gray-300 text-5xl">—</span>
+        )}
+        {equipment.requires_personnel && (
+          <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-400 text-amber-900">
+            Technician
+          </span>
         )}
       </div>
       <div className="p-4 flex flex-col flex-1">
@@ -39,12 +43,11 @@ function EquipmentCard({ equipment }) {
         <h3 className="font-semibold text-gray-900 text-sm leading-snug mb-2 flex-1">
           {equipment.equipment_name}
         </h3>
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
           <ConditionBadge condition={equipment.condition} />
           <span
-            className={`text-xs ${
-              equipment.available_quantity > 0 ? 'text-green-700' : 'text-red-600'
-            }`}
+            className={`text-xs ${equipment.available_quantity > 0 ? 'text-green-700' : 'text-red-600'
+              }`}
           >
             {equipment.available_quantity > 0
               ? `${equipment.available_quantity} available`
@@ -52,10 +55,17 @@ function EquipmentCard({ equipment }) {
           </span>
         </div>
         <div className="flex items-center justify-between mt-auto">
-          <span className="font-bold text-gray-900 text-sm">
-            KES {parseFloat(equipment.unit_price_per_day).toLocaleString()}
-            <span className="text-xs font-normal text-gray-500">/day</span>
-          </span>
+          <div>
+            <span className="font-bold text-gray-900 text-sm">
+              KES {parseFloat(equipment.unit_price_per_day).toLocaleString()}
+              <span className="text-xs font-normal text-gray-500">/day</span>
+            </span>
+            {equipment.requires_personnel && parseFloat(equipment.personnel_cost_per_day) > 0 && (
+              <p className="text-[10px] text-amber-700">
+                + KES {parseFloat(equipment.personnel_cost_per_day).toLocaleString()} personnel/day
+              </p>
+            )}
+          </div>
           <button
             onClick={() => navigate(`/school/equipment/${equipment.id}`)}
             className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -74,13 +84,23 @@ export default function SchoolCatalogPage() {
   const [equipment, setEquipment] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [cartCount, setCartCount] = useState(0);
   const [searchInput, setSearchInput] = useState(searchParams.get('search') || '');
 
   const selectedCategory = searchParams.get('category') || '';
   const searchQuery = searchParams.get('search') || '';
   const ordering = searchParams.get('ordering') || '';
 
-  const cartTotalItems = useCartStore((s) => s.totalItems)();
+  // Fetch server-side cart item count
+  const fetchCartCount = useCallback(async () => {
+    try {
+      const res = await cartApi.get();
+      const cart = res?.data ?? res;
+      setCartCount(cart?.items?.length ?? 0);
+    } catch {
+      setCartCount(0);
+    }
+  }, []);
 
   const fetchEquipment = useCallback(async () => {
     setLoading(true);
@@ -113,7 +133,7 @@ export default function SchoolCatalogPage() {
     }
   }, []);
 
-  useEffect(() => { fetchCategories(); }, [fetchCategories]);
+  useEffect(() => { fetchCategories(); fetchCartCount(); }, [fetchCategories, fetchCartCount]);
   useEffect(() => { fetchEquipment(); }, [fetchEquipment]);
 
   const handleSearch = (e) => {
@@ -149,11 +169,10 @@ export default function SchoolCatalogPage() {
           <li>
             <button
               onClick={() => handleCategoryClick('')}
-              className={`w-full text-left text-sm px-3 py-2 rounded-lg transition-colors ${
-                !selectedCategory
+              className={`w-full text-left text-sm px-3 py-2 rounded-lg transition-colors ${!selectedCategory
                   ? 'bg-blue-50 text-blue-700 font-medium'
                   : 'text-gray-600 hover:bg-gray-100'
-              }`}
+                }`}
             >
               All Equipment
             </button>
@@ -162,11 +181,10 @@ export default function SchoolCatalogPage() {
             <li key={cat.id}>
               <button
                 onClick={() => handleCategoryClick(cat.id)}
-                className={`w-full text-left text-sm px-3 py-2 rounded-lg transition-colors ${
-                  selectedCategory === cat.id
+                className={`w-full text-left text-sm px-3 py-2 rounded-lg transition-colors ${selectedCategory === cat.id
                     ? 'bg-blue-50 text-blue-700 font-medium'
                     : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 {cat.category_name}
               </button>
@@ -207,7 +225,7 @@ export default function SchoolCatalogPage() {
           </select>
           <button
             onClick={() => navigate('/school/cart')}
-            className="relative flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-800"
+            className="relative flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-gray-800"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -218,9 +236,9 @@ export default function SchoolCatalogPage() {
               />
             </svg>
             Cart
-            {cartTotalItems > 0 && (
+            {cartCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                {cartTotalItems}
+                {cartCount}
               </span>
             )}
           </button>
@@ -258,7 +276,6 @@ export default function SchoolCatalogPage() {
           </div>
         ) : equipment.length === 0 ? (
           <div className="text-center py-16">
-            <div className="text-5xl mb-3">🔬</div>
             <p className="text-gray-500 text-sm">
               No equipment found. Try a different search or category.
             </p>
