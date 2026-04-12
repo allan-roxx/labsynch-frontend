@@ -7,13 +7,13 @@ import StatusBadge from '../../components/ui/StatusBadge';
 // New 8-state Progress Stepper
 // -----------------------------------------------------------------------------
 const STEPS = [
-  { key: 'PENDING',    label: 'Submitted' },
-  { key: 'APPROVED',   label: 'Approved' },
-  { key: 'RESERVED',   label: 'Reserved' },
+  { key: 'PENDING', label: 'Submitted' },
+  { key: 'APPROVED', label: 'Approved' },
+  { key: 'RESERVED', label: 'Reserved' },
   { key: 'DISPATCHED', label: 'Dispatched' },
-  { key: 'IN_USE',     label: 'In Use' },
-  { key: 'RETURNED',   label: 'Returned' },
-  { key: 'COMPLETED',  label: 'Completed' },
+  { key: 'IN_USE', label: 'In Use' },
+  { key: 'RETURNED', label: 'Returned' },
+  { key: 'COMPLETED', label: 'Completed' },
 ];
 
 function stepIndex(status) {
@@ -26,36 +26,34 @@ function stepIndex(status) {
 function ProgressStepper({ status }) {
   const current = stepIndex(status);
   const cancelled = status === 'CANCELLED';
-  const overdue   = status === 'OVERDUE';
+  const overdue = status === 'OVERDUE';
 
   return (
     <div>
       {(cancelled || overdue) && (
-        <div className={`mb-4 px-4 py-2.5 rounded-lg text-sm font-medium ${
-          cancelled ? 'bg-gray-100 text-gray-600' : 'bg-red-50 text-red-700 border border-red-200'
-        }`}>
+        <div className={`mb-4 px-4 py-2.5 rounded-lg text-sm font-medium ${cancelled ? 'bg-gray-100 text-gray-600' : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
           {cancelled ? 'This booking has been cancelled.' : 'This booking is overdue.'}
         </div>
       )}
       <div className="flex items-start overflow-x-auto pb-2">
         {STEPS.map((step, idx) => {
-          const isDone    = !cancelled && idx <  current;
+          const isDone = !cancelled && idx < current;
           const isCurrent = !cancelled && idx === current;
           return (
             <div key={step.key} className="flex items-center flex-1 last:flex-none min-w-0">
               <div className="flex flex-col items-center">
                 <div
-                  className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${
-                    cancelled
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${cancelled
                       ? 'bg-gray-100 text-gray-400'
                       : overdue && isCurrent
-                      ? 'bg-red-500 text-white'
-                      : isDone
-                      ? 'bg-blue-600 text-white'
-                      : isCurrent
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-400'
-                  }`}
+                        ? 'bg-red-500 text-white'
+                        : isDone
+                          ? 'bg-blue-600 text-white'
+                          : isCurrent
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-400'
+                    }`}
                 >
                   {isDone ? (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,20 +64,18 @@ function ProgressStepper({ status }) {
                   )}
                 </div>
                 <span
-                  className={`mt-2 text-xs text-center leading-tight w-16 ${
-                    (isDone || isCurrent) && !cancelled
+                  className={`mt-2 text-xs text-center leading-tight w-16 ${(isDone || isCurrent) && !cancelled
                       ? 'text-gray-800 font-medium'
                       : 'text-gray-400'
-                  }`}
+                    }`}
                 >
                   {step.label}
                 </span>
               </div>
               {idx < STEPS.length - 1 && (
                 <div
-                  className={`flex-1 h-0.5 mx-1 mb-6 ${
-                    !cancelled && idx < current ? 'bg-blue-500' : 'bg-gray-200'
-                  }`}
+                  className={`flex-1 h-0.5 mx-1 mb-6 ${!cancelled && idx < current ? 'bg-blue-500' : 'bg-gray-200'
+                    }`}
                 />
               )}
             </div>
@@ -108,7 +104,7 @@ function PaymentModal({ booking, onClose, onSuccess }) {
     setError('');
     setLoading(true);
     try {
-      await paymentsApi.stkPush({ booking: booking.id, mpesa_phone_number: phone });
+      await paymentsApi.stkPush({ booking_id: booking.id, phone_number: phone });
       setSuccess(true);
       setTimeout(() => onSuccess(), 2500);
     } catch (err) {
@@ -253,10 +249,10 @@ export default function SchoolBookingDetailPage() {
 
   const totalDays = booking
     ? Math.max(
-        0,
-        (new Date(booking.return_date) - new Date(booking.pickup_date)) /
-          (1000 * 60 * 60 * 24),
-      )
+      0,
+      (new Date(booking.return_date) - new Date(booking.pickup_date)) /
+      (1000 * 60 * 60 * 24),
+    )
     : 0;
 
   // ── Loading skeleton ──
@@ -290,13 +286,13 @@ export default function SchoolBookingDetailPage() {
   }
 
   // Updated state machine logic
-  const canPay    = booking.status === 'APPROVED';
+  const canPay = booking.status === 'APPROVED';
   const canCancel = ['PENDING', 'APPROVED', 'RESERVED'].includes(booking.status);
 
   // Cost breakdown
   const rentalSubtotal = parseFloat(booking.total_amount || 0);
-  const transportCost  = parseFloat(booking.transport_cost || 0);
-  const personnelCost  = booking.booking_items?.reduce(
+  const transportCost = parseFloat(booking.transport_cost || 0);
+  const personnelCost = booking.booking_items?.reduce(
     (sum, item) => sum + parseFloat(item.personnel_cost || 0),
     0,
   ) ?? 0;

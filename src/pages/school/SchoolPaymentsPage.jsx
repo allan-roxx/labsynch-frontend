@@ -97,18 +97,18 @@ export default function SchoolPaymentsPage() {
                     {payment.booking_reference || payment.booking || '—'}
                   </td>
                   <td className="px-5 py-3 text-right font-medium text-gray-900">
-                    KES {parseFloat(payment.amount || 0).toLocaleString()}
+                    KES {parseFloat(payment.amount_paid || 0).toLocaleString()}
                   </td>
                   <td className="px-5 py-3 text-center">
                     <StatusBadge status={payment.payment_status ?? payment.status} />
                   </td>
                   <td className="px-5 py-3 text-gray-600 hidden sm:table-cell text-xs">
-                    {payment.created_at
-                      ? new Date(payment.created_at).toLocaleDateString('en-KE', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                        })
+                    {payment.completed_at
+                      ? new Date(payment.completed_at).toLocaleDateString('en-KE', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })
                       : '—'}
                   </td>
                   <td className="px-5 py-3 text-right">

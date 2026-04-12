@@ -18,6 +18,7 @@ import VerifyEmailPage from './pages/auth/VerifyEmailPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminEquipmentPage from './pages/admin/AdminEquipmentPage';
 import AdminBookingsPage from './pages/admin/AdminBookingsPage';
+import AdminBookingDetailPage from './pages/admin/AdminBookingDetailPage';
 import AdminReturnsPage from './pages/admin/AdminReturnsPage';
 import AdminMaintenancePage from './pages/admin/AdminMaintenancePage';
 import AdminSchoolsPage from './pages/admin/AdminSchoolsPage';
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/equipment" element={<AdminEquipmentPage />} />
             <Route path="/admin/bookings" element={<AdminBookingsPage />} />
+            <Route path="/admin/bookings/:id" element={<AdminBookingDetailPage />} />
             <Route path="/admin/returns" element={<AdminReturnsPage />} />
             <Route path="/admin/maintenance" element={<AdminMaintenancePage />} />
             <Route path="/admin/schools" element={<AdminSchoolsPage />} />

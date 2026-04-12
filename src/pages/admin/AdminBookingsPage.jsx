@@ -36,7 +36,7 @@ function BookingActions({ booking, onRefresh }) {
   return (
     <div className="flex items-center gap-1.5 justify-end flex-wrap">
       <Link
-        to={`/admin/bookings`}
+        to={`/admin/bookings/${booking.id}`}
         onClick={(e) => e.stopPropagation()}
         className="px-2.5 py-1 text-xs border border-gray-300 text-gray-600 rounded hover:bg-gray-50 transition-colors"
       >

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { authApi } from '../../api/endpoints';
+import { authApi, usersApi } from '../../api/endpoints';
 import { Button, Input, Alert } from '../../components/ui';
 
-const INITIAL = {
+// Fields accepted by the registration endpoint
+const ACCOUNT_FIELDS = {
   email: '',
   password: '',
   confirm_password: '',
@@ -11,15 +12,20 @@ const INITIAL = {
   phone_number: '',
   school_name: '',
   registration_number: '',
-  physical_address: '',
-  county: '',
+};
+
+// Extra profile fields — patched after registration
+const PROFILE_FIELDS = {
   contact_person: '',
   contact_designation: '',
+  county: '',
+  physical_address: '',
 };
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState(INITIAL);
+
+  const [form, setForm] = useState({ ...ACCOUNT_FIELDS, ...PROFILE_FIELDS });
   const [fieldErrors, setFieldErrors] = useState({});
   const [bannerError, setBannerError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,10 +38,11 @@ export default function RegisterPage() {
 
   const validate = () => {
     const errors = {};
-    if (!form.email) errors.email = 'Email is required.';
-    if (!form.full_name) errors.full_name = 'Full name is required.';
-    if (!form.password) errors.password = 'Password is required.';
-    else if (form.password.length < 8) errors.password = 'Password must be at least 8 characters.';
+    if (!form.email)       errors.email       = 'Email is required.';
+    if (!form.full_name)   errors.full_name   = 'Full name is required.';
+    if (!form.password)    errors.password    = 'Password is required.';
+    else if (form.password.length < 8)
+      errors.password = 'Password must be at least 8 characters.';
     if (form.password !== form.confirm_password)
       errors.confirm_password = 'Passwords do not match.';
     if (!form.school_name) errors.school_name = 'School name is required.';
@@ -50,7 +57,46 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await authApi.register(form);
+      // Step 1 — Create the account (only sends fields the endpoint accepts)
+      const registrationPayload = {
+        email:               form.email,
+        password:            form.password,
+        confirm_password:    form.confirm_password,
+        full_name:           form.full_name,
+        phone_number:        form.phone_number,
+        school_name:         form.school_name,
+        registration_number: form.registration_number,
+      };
+      const regRes = await authApi.register(registrationPayload);
+      const regData = regRes?.data ?? regRes;
+
+      // Step 2 — If the user provided extra profile details, persist them.
+      // We need a token to call the profile endpoint, so we log in silently first.
+      const hasExtraFields = Object.keys(PROFILE_FIELDS).some((k) => form[k]?.trim());
+      if (hasExtraFields) {
+        try {
+          const loginRes = await authApi.login({ email: form.email, password: form.password });
+          // The login endpoint returns tokens inside data.tokens per AGENTS.md
+          const tokens = loginRes?.data?.tokens ?? loginRes?.tokens ?? loginRes?.data;
+          if (tokens?.access) {
+            // Temporarily write the access token so the client interceptor picks it up
+            localStorage.setItem('access_token', tokens.access);
+            const profilePayload = {};
+            Object.keys(PROFILE_FIELDS).forEach((k) => {
+              if (form[k]?.trim()) profilePayload[k] = form[k];
+            });
+            await usersApi.updateMySchoolProfile(profilePayload);
+            // Remove immediately — user hasn't verified email yet
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+          }
+        } catch {
+          // Profile patch failed — non-fatal, user can fill in via profile page
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+        }
+      }
+
       setSuccess(true);
     } catch (err) {
       if (err?.errors) {
@@ -69,6 +115,7 @@ export default function RegisterPage() {
     }
   };
 
+  // ── Success screen ──
   if (success) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
@@ -90,6 +137,7 @@ export default function RegisterPage() {
     );
   }
 
+  // ── Form ──
   return (
     <div className="flex min-h-screen justify-center bg-gray-50 px-4 py-12">
       <div className="w-full max-w-2xl">
@@ -110,7 +158,7 @@ export default function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit} noValidate>
-            {/* Section: Account */}
+            {/* ── Section: Account ── */}
             <fieldset className="mb-6">
               <legend className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-400">
                 Account details
@@ -132,10 +180,9 @@ export default function RegisterPage() {
               </div>
             </fieldset>
 
-            {/* Divider */}
             <hr className="my-4 border-gray-100" />
 
-            {/* Section: School */}
+            {/* ── Section: School (required) ── */}
             <fieldset className="mb-6">
               <legend className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-400">
                 School information
@@ -146,14 +193,29 @@ export default function RegisterPage() {
                 <Input id="registration_number" name="registration_number" label="Registration number (optional)"
                   placeholder="REG/001/2020" value={form.registration_number} onChange={handleChange}
                   error={fieldErrors.registration_number} />
-                <Input id="county" name="county" label="County" placeholder="Nairobi"
-                  value={form.county} onChange={handleChange} error={fieldErrors.county} />
+              </div>
+            </fieldset>
+
+            <hr className="my-4 border-gray-100" />
+
+            {/* ── Section: Contact details (optional, saved post-registration) ── */}
+            <fieldset className="mb-6">
+              <legend className="mb-1 text-sm font-semibold uppercase tracking-wide text-gray-400">
+                Contact details
+              </legend>
+              <p className="text-xs text-gray-400 mb-4">
+                Optional — you can also fill these in from your profile after logging in.
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Input id="contact_person" name="contact_person" label="Contact person"
                   placeholder="Head of Science" value={form.contact_person} onChange={handleChange}
                   error={fieldErrors.contact_person} />
                 <Input id="contact_designation" name="contact_designation" label="Designation"
                   placeholder="Lab Coordinator" value={form.contact_designation} onChange={handleChange}
                   error={fieldErrors.contact_designation} />
+                <Input id="county" name="county" label="County"
+                  placeholder="Nairobi" value={form.county} onChange={handleChange}
+                  error={fieldErrors.county} />
                 <div className="sm:col-span-2">
                   <Input id="physical_address" name="physical_address" label="Physical address"
                     placeholder="P.O Box 123, Nairobi" value={form.physical_address} onChange={handleChange}

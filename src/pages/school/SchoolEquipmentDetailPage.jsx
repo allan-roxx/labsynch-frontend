@@ -185,8 +185,8 @@ export default function SchoolEquipmentDetailPage() {
                   key={img.id}
                   onClick={() => setSelectedImage(img.image_url)}
                   className={`shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${selectedImage === img.image_url
-                      ? 'border-blue-500'
-                      : 'border-transparent hover:border-gray-300'
+                    ? 'border-blue-500'
+                    : 'border-transparent hover:border-gray-300'
                     }`}
                 >
                   <img src={img.image_url} alt="" className="w-full h-full object-cover" />
@@ -325,8 +325,8 @@ export default function SchoolEquipmentDetailPage() {
           {availability && (
             <div
               className={`mb-3 px-4 py-3 rounded-lg text-sm font-medium ${availability.available_quantity > 0
-                  ? 'bg-green-50 text-green-800'
-                  : 'bg-red-50 text-red-800'
+                ? 'bg-green-50 text-green-800'
+                : 'bg-red-50 text-red-800'
                 }`}
             >
               {availability.available_quantity > 0
@@ -361,7 +361,7 @@ export default function SchoolEquipmentDetailPage() {
           </div>
           <button
             onClick={() => navigate('/school/cart')}
-            className="w-full px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+            className="w-full px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors"
           >
             View Cart &amp; Checkout
           </button>
