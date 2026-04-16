@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { cartApi, usersApi } from '../../api/endpoints';
+import { cartApi, usersApi, transportZonesApi } from '../../api/endpoints';
 
 // Helper: compute duration days between two date strings
 function daysBetween(d1, d2) {
@@ -33,20 +33,25 @@ export default function SchoolCartPage() {
   // Fetch cart + school profile on mount
   const fetchCart = useCallback(async () => {
     try {
-      const [cartRes, profileRes] = await Promise.all([
+      const [cartRes, profileRes, zonesRes] = await Promise.all([
         cartApi.get(),
         usersApi.mySchoolProfile(),
+        transportZonesApi.list({ page_size: 100 }),
       ]);
       const cartData = cartRes?.data ?? cartRes;
-      const profile  = profileRes?.data ?? profileRes;
+      const profile = profileRes?.data ?? profileRes;
+      const zonesData = zonesRes?.data ?? zonesRes;
+      
       setCart(cartData);
       setSchoolProfile(profile);
       setRequiresTransport(cartData?.requires_transport ?? false);
-      // transport fee from school's assigned zone
-      const fee = parseFloat(profile?.transport_zone_details?.base_transport_fee ?? profile?.transport_zone_fee ?? 0);
+      
+      const zonesList = zonesData?.results ?? zonesData ?? [];
+      const userZone = zonesList.find(z => z.id === profile?.transport_zone);
+      const fee = parseFloat(userZone?.base_transport_fee ?? 0);
       setTransportFee(fee);
     } catch (err) {
-      console.error('Failed to load cart:', err);
+      console.error('Failed to load cart or profile data:', err);
     } finally {
       setLoading(false);
     }

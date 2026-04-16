@@ -30,7 +30,7 @@ export default function SchoolPaymentsPage() {
     setDownloadingId(payment.id);
     try {
       const res = await paymentsApi.receipt(payment.id);
-      downloadPdf(res, `receipt-${payment.transaction_id || payment.id}.pdf`);
+      downloadPdf(res, `receipt-${payment.transaction_ref || payment.id}.pdf`);
     } catch (err) {
       alert(err?.message || 'Failed to download receipt.');
     } finally {
@@ -91,7 +91,7 @@ export default function SchoolPaymentsPage() {
               payments.map((payment) => (
                 <tr key={payment.id} className="hover:bg-gray-50">
                   <td className="px-5 py-3 font-mono text-xs text-gray-700">
-                    {payment.transaction_id || payment.mpesa_receipt_number || '—'}
+                    {payment.transaction_ref || payment.mpesa_receipt_number || '—'}
                   </td>
                   <td className="px-5 py-3 text-gray-600 hidden md:table-cell text-xs">
                     {payment.booking_reference || payment.booking || '—'}

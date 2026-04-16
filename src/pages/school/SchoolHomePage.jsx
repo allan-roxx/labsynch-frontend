@@ -8,13 +8,13 @@ import { StatusBadge } from '../../components/ui';
 const ACTIVE_STATUSES = new Set(['PENDING', 'APPROVED', 'RESERVED', 'DISPATCHED', 'IN_USE']);
 const NEEDS_PAYMENT_STATUSES = new Set(['APPROVED']);
 
-// ── Stat card ──────────────────────────────────────────────────────────────────
+// ── Stat card 
 function StatCard({ label, value, sub }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
-      <p className="text-2xl font-bold text-gray-900">{value ?? '—'}</p>
-      {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
-      <p className="text-xs text-gray-500 mt-2">{label}</p>
+    <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <p className="text-3xl font-bold text-black">{value ?? '—'}</p>
+      {sub && <p className="text-xs text-gray-500 mt-0.5">{sub}</p>}
+      <p className="text-sm text-gray-500 mt-1">{label}</p>
     </div>
   );
 }
@@ -35,9 +35,13 @@ export default function SchoolHomePage() {
       usersApi.mySchoolProfile(),
     ])
       .then(([bRes, pRes, spRes]) => {
-        setBookings(bRes.data?.results ?? bRes.data ?? []);
-        setPayments(pRes.data?.results ?? pRes.data ?? []);
-        setSchoolProfile(spRes?.data ?? spRes);
+        const bData = bRes?.data ?? bRes;
+        const pData = pRes?.data ?? pRes;
+        const spData = spRes?.data ?? spRes;
+
+        setBookings(bData?.results ?? (Array.isArray(bData) ? bData : []));
+        setPayments(pData?.results ?? (Array.isArray(pData) ? pData : []));
+        setSchoolProfile(spData ?? null);
       })
       .catch(() => {/* API errors handled by interceptor */ })
       .finally(() => setLoading(false));
@@ -45,19 +49,20 @@ export default function SchoolHomePage() {
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const activeBookings = bookings.filter((b) => ACTIVE_STATUSES.has(b.status));
-  const completedBookings = bookings.filter((b) => b.status === 'COMPLETED');
+  const completedBookings = bookings.filter((b) => b.status === 'COMPLETED' || b.status === 'IN_USE');
 
   const pendingPaymentAmount = bookings
     .filter((b) => NEEDS_PAYMENT_STATUSES.has(b.status))
     .reduce((sum, b) => sum + parseFloat(b.total_amount ?? 0), 0);
 
-  const totalSpent = payments.reduce((sum, p) => sum + parseFloat(p.amount ?? 0), 0);
+  const totalSpent = payments
+    .filter((p) => p.payment_status === 'SUCCESS')
+    .reduce((sum, p) => sum + parseFloat(p.amount_paid ?? 0), 0);
 
   // Upcoming = active bookings, first 5 sorted by pickup_date
   const upcomingBookings = bookings
     .filter((b) => ACTIVE_STATUSES.has(b.status))
     .slice(0, 5);
-
   const schoolName = schoolProfile?.school_name ?? user?.school_profile?.school_name ?? user?.full_name ?? 'School';
   const liabilityStatus = schoolProfile?.liability_status ?? user?.school_profile?.liability_status;
 
@@ -87,16 +92,17 @@ export default function SchoolHomePage() {
       )}
 
       {/* ── Welcome banner ── */}
-      <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-6 py-5">
+      <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-8 py-8 mb-6">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Welcome back, {schoolName}!</h1>
-          <span className="mt-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
+          <h1 className="text-2xl font-bold text-gray-700">Welcome back, {schoolName}!</h1>
+          <div className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1 text-xs font-semibold text-black">
+            <span className="h-1.5 w-1.5 rounded-full bg-black"></span>
             Active
-          </span>
+          </div>
         </div>
         <button
           onClick={() => navigate('/school/catalog')}
-          className="rounded-md bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
+          className="bg-blue-500 rounded-lg px-6 py-3 text-sm font-bold text-white hover:bg-black transition-colors"
         >
           MAKE A BOOKING
         </button>
@@ -119,10 +125,10 @@ export default function SchoolHomePage() {
       )}
 
       {/* ── Upcoming Bookings table ── */}
-      <div className="rounded-lg border border-gray-200 bg-white">
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <h2 className="text-sm font-semibold text-gray-900">Upcoming Bookings</h2>
-          <Link to="/school/bookings" className="text-xs font-medium text-blue-600 hover:underline">
+      <div className="rounded-lg border-2 border-gray-200 bg-white mt-8">
+        <div className="flex items-center justify-between rounded-lg border border-gray-200 px-6 py-6">
+          <h2 className="text-xl font-bold text-black">Upcoming Bookings</h2>
+          <Link to="/school/bookings" className="text-sm font-semibold text-blue-600 hover:underline">
             View All →
           </Link>
         </div>
@@ -130,16 +136,16 @@ export default function SchoolHomePage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs font-medium text-gray-500">
-                <th className="px-5 py-3">Booking Ref</th>
-                <th className="px-5 py-3">Equipment Count</th>
-                <th className="px-5 py-3">Pickup Date</th>
-                <th className="px-5 py-3">Return Date</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3">Actions</th>
+              <tr className="border-b border-gray-200 bg-white text-left text-sm font-bold text-black">
+                <th className="px-6 py-4">Booking Ref</th>
+                <th className="px-6 py-4">Equipment Count</th>
+                <th className="px-6 py-4">Pickup Date</th>
+                <th className="px-6 py-4">Return Date</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-200">
               {loading ? (
                 [...Array(5)].map((_, i) => (
                   <tr key={i}>
@@ -201,24 +207,26 @@ function BookingRow({ booking, onRefresh }) {
 
   return (
     <tr className="hover:bg-gray-50 transition-colors">
-      <td className="px-5 py-3 font-mono text-xs text-gray-700">{booking.booking_reference}</td>
-      <td className="px-5 py-3 text-gray-600">{itemLabel}</td>
-      <td className="px-5 py-3 text-gray-600">{booking.pickup_date}</td>
-      <td className="px-5 py-3 text-gray-600">{booking.return_date}</td>
-      <td className="px-5 py-3">
-        <StatusBadge status={booking.status} />
+      <td className="px-6 py-4 font-medium text-sm text-black">{booking.booking_reference}</td>
+      <td className="px-6 py-4 text-sm text-black">{itemLabel}</td>
+      <td className="px-6 py-4 text-sm text-black">{booking.pickup_date}</td>
+      <td className="px-6 py-4 text-sm text-black">{booking.return_date}</td>
+      <td className="px-6 py-4">
+        <span className="text-sm font-medium text-black capitalize">
+          {booking.status?.toLowerCase().replace('_', ' ') || 'Unknown'}
+        </span>
       </td>
-      <td className="px-5 py-3">
-        <div className="flex items-center gap-1.5">
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-2">
           <ActionBtn onClick={() => navigate(`/school/bookings/${booking.id}`)}>View</ActionBtn>
           {canPay && (
-            <ActionBtn onClick={() => navigate(`/school/bookings/${booking.id}`)} variant="pay">
+            <ActionBtn onClick={() => navigate(`/school/bookings/${booking.id}`)}>
               Pay
             </ActionBtn>
           )}
           {canCancel && (
-            <ActionBtn onClick={handleCancel} variant="cancel" disabled={cancelling}>
-              {cancelling ? '…' : 'Cancel'}
+            <ActionBtn onClick={handleCancel} disabled={cancelling}>
+              {cancelling ? '...' : 'Cancel'}
             </ActionBtn>
           )}
         </div>
@@ -228,16 +236,11 @@ function BookingRow({ booking, onRefresh }) {
 }
 
 function ActionBtn({ children, onClick, variant = 'default', disabled }) {
-  const styles = {
-    default: 'border-gray-300 text-gray-600 hover:bg-gray-100',
-    pay: 'border-blue-300 text-blue-600 hover:bg-blue-50',
-    cancel: 'border-red-200 text-red-500 hover:bg-red-50',
-  };
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`rounded border px-2.5 py-0.5 text-xs font-medium transition-colors disabled:opacity-50 ${styles[variant]}`}
+      className="border border-gray-200 px-4 py-1 text-xs font-semibold text-black hover:bg-gray-100 transition-colors disabled:opacity-50"
     >
       {children}
     </button>

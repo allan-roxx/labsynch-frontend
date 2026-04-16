@@ -4,13 +4,13 @@ import { reportsApi } from '../../api/endpoints';
 
 function StatCard({ label, value, color = 'blue', to }) {
   const colors = {
-    blue:   'bg-blue-50 text-blue-700 border-blue-100',
-    green:  'bg-green-50 text-green-700 border-green-100',
-    amber:  'bg-amber-50 text-amber-700 border-amber-100',
-    red:    'bg-red-50 text-red-700 border-red-100',
+    blue: 'bg-blue-50 text-blue-700 border-blue-100',
+    green: 'bg-green-50 text-green-700 border-green-100',
+    amber: 'bg-amber-50 text-amber-700 border-amber-100',
+    red: 'bg-red-50 text-red-700 border-red-100',
     purple: 'bg-purple-50 text-purple-700 border-purple-100',
-    teal:   'bg-teal-50 text-teal-700 border-teal-100',
-    gray:   'bg-gray-50 text-gray-700 border-gray-100',
+    teal: 'bg-teal-50 text-teal-700 border-teal-100',
+    gray: 'bg-gray-50 text-gray-700 border-gray-100',
   };
   const card = (
     <div className={`rounded-xl border p-5 ${colors[color]}`}>
@@ -82,14 +82,14 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 mb-6">
-        <StatCard label="Total Bookings"     value={metrics?.total_bookings}     color="blue"   to="/admin/bookings" />
-        <StatCard label="Active Bookings"    value={metrics?.active_bookings}    color="green"  to="/admin/bookings" />
-        <StatCard label="Overdue Bookings"   value={metrics?.overdue_bookings}   color="red"    to="/admin/bookings" />
-        <StatCard label="Total Equipment"    value={metrics?.total_equipment}    color="purple" to="/admin/equipment" />
-        <StatCard label="Total Revenue"      value={fmtKes(metrics?.total_revenue)}      color="teal"   to="/admin/reports" />
-        <StatCard label="Revenue This Month" value={fmtKes(metrics?.revenue_this_month)} color="teal"   to="/admin/reports" />
-        <StatCard label="Client Schools"     value={metrics?.total_schools}     color="amber"  to="/admin/schools" />
-        <StatCard label="Pending Damages"    value={metrics?.pending_damage_reports} color="red" to="/admin/returns" />
+        <StatCard label="Total Bookings" value={metrics?.total_bookings} color="blue" to="/admin/bookings" />
+        <StatCard label="Active Bookings" value={metrics?.active_bookings} color="green" to="/admin/bookings" />
+        <StatCard label="Overdue Bookings" value={metrics?.overdue_bookings} color="red" to="/admin/bookings" />
+        <StatCard label="Total Equipment" value={metrics?.total_equipment} color="purple" to="/admin/equipment" />
+        <StatCard label="Total Revenue" value={fmtKes(metrics?.revenue_total)} color="teal" to="/admin/reports" />
+        <StatCard label="Revenue This Month" value={fmtKes(metrics?.revenue_this_month)} color="teal" to="/admin/reports" />
+        <StatCard label="Client Schools" value={metrics?.total_schools} color="amber" to="/admin/schools" />
+        <StatCard label="Pending Damages" value={metrics?.pending_damage_reports} color="red" to="/admin/returns" />
       </div>
 
       <p className="text-xs text-gray-400">

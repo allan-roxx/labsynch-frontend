@@ -59,14 +59,14 @@ function OverviewTab({ metrics }) {
   const fmtKes = (n) => `KES ${parseFloat(n || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      <KpiCard label="Total Bookings"     value={metrics.total_bookings}       color="blue" />
-      <KpiCard label="Active Bookings"    value={metrics.active_bookings}      color="green" />
-      <KpiCard label="Overdue Bookings"   value={metrics.overdue_bookings}     color="red" />
-      <KpiCard label="Total Equipment"    value={metrics.total_equipment}      color="blue" />
-      <KpiCard label="Total Revenue"      value={fmtKes(metrics.total_revenue)}       color="teal" />
-      <KpiCard label="Revenue This Month" value={fmtKes(metrics.revenue_this_month)}  color="teal" />
-      <KpiCard label="Client Schools"     value={metrics.total_schools}        color="amber" />
-      <KpiCard label="Pending Damages"    value={metrics.pending_damage_reports} color="red" />
+      <KpiCard label="Total Bookings" value={metrics.total_bookings} color="blue" />
+      <KpiCard label="Active Bookings" value={metrics.active_bookings} color="green" />
+      <KpiCard label="Overdue Bookings" value={metrics.overdue_bookings} color="red" />
+      <KpiCard label="Total Equipment" value={metrics.total_equipment} color="blue" />
+      <KpiCard label="Total Revenue" value={fmtKes(metrics.revenue_total)} color="teal" />
+      <KpiCard label="Revenue This Month" value={fmtKes(metrics.revenue_this_month)} color="teal" />
+      <KpiCard label="Client Schools" value={metrics.total_schools} color="amber" />
+      <KpiCard label="Pending Damages" value={metrics.pending_damage_reports} color="red" />
     </div>
   );
 }
@@ -114,10 +114,10 @@ function BookingsTab() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <KpiCard label="Total Bookings" value={data?.total_bookings} color="blue" />
-            <KpiCard label="Approved" value={data?.approved_bookings} color="green" />
-            <KpiCard label="Cancelled" value={data?.cancelled_bookings} color="red" />
-            <KpiCard label="Completed" value={data?.completed_bookings} color="teal" />
+            <KpiCard label="Total Bookings" value={data?.total} color="blue" />
+            <KpiCard label="Approved" value={data?.by_status.APPROVED} color="green" />
+            <KpiCard label="Cancelled" value={data?.by_status.CANCELLED} color="red" />
+            <KpiCard label="Completed" value={data?.by_status.COMPLETED} color="teal" />
           </div>
           {statusData.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -128,7 +128,7 @@ function BookingsTab() {
                   <XAxis dataKey="status" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip />
-                  <Bar dataKey="count" fill="#3b82f6" radius={[4,4,0,0]} />
+                  <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -182,8 +182,8 @@ function FinancialTab() {
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <KpiCard label="Total Revenue" value={fmtKes(data?.total_revenue)} color="teal" />
-            <KpiCard label="Total Payments" value={data?.total_payments} color="blue" />
-            <KpiCard label="Outstanding" value={fmtKes(data?.outstanding_amount)} color="amber" />
+            <KpiCard label="Total Payments" value={data?.payment_count} color="blue" />
+            <KpiCard label="Outstanding" value={fmtKes(data?.outstanding_damage_cost)} color="amber" />
           </div>
           {monthlyData.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -243,7 +243,7 @@ function EquipmentTab() {
                   <XAxis type="number" tick={{ fontSize: 11 }} />
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={120} />
                   <Tooltip />
-                  <Bar dataKey="bookings" fill="#8b5cf6" radius={[0,4,4,0]} name="Bookings" />
+                  <Bar dataKey="bookings" fill="#8b5cf6" radius={[0, 4, 4, 0]} name="Bookings" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -323,7 +323,7 @@ function ClientsTab() {
                 <tr>
                   <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">School</th>
                   <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Bookings</th>
-                  <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden sm:table-cell">Completed</th>
+                  {/* <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden sm:table-cell">Completed</th> */}
                   <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden md:table-cell">Total Spent</th>
                 </tr>
               </thead>
@@ -332,9 +332,9 @@ function ClientsTab() {
                   <tr key={i} className="hover:bg-gray-50">
                     <td className="px-5 py-3 font-medium text-gray-900">{item.school_name}</td>
                     <td className="px-5 py-3 text-right text-gray-700">{item.total_bookings ?? item.booking_count ?? '—'}</td>
-                    <td className="px-5 py-3 text-right text-gray-700 hidden sm:table-cell">{item.completed_bookings ?? '—'}</td>
+                    {/* <td className="px-5 py-3 text-right text-gray-700 hidden sm:table-cell">{item.completed_bookings ?? '—'}</td> */}
                     <td className="px-5 py-3 text-right text-gray-700 hidden md:table-cell">
-                      {item.total_spent ? `KES ${parseFloat(item.total_spent).toLocaleString()}` : '—'}
+                      {item.total_spend ? `KES ${parseFloat(item.total_spend).toLocaleString()}` : '—'}
                     </td>
                   </tr>
                 ))}
@@ -373,11 +373,10 @@ export default function AdminReportsPage() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-              activeTab === tab
-                ? 'border-blue-600 text-blue-700'
-                : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300'
-            }`}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === tab
+              ? 'border-blue-600 text-blue-700'
+              : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300'
+              }`}
           >
             {tab}
           </button>
@@ -385,11 +384,11 @@ export default function AdminReportsPage() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'Overview'   && <OverviewTab  metrics={dashboardMetrics} />}
-      {activeTab === 'Bookings'   && <BookingsTab />}
-      {activeTab === 'Financial'  && <FinancialTab />}
-      {activeTab === 'Equipment'  && <EquipmentTab />}
-      {activeTab === 'Clients'    && <ClientsTab />}
+      {activeTab === 'Overview' && <OverviewTab metrics={dashboardMetrics} />}
+      {activeTab === 'Bookings' && <BookingsTab />}
+      {activeTab === 'Financial' && <FinancialTab />}
+      {activeTab === 'Equipment' && <EquipmentTab />}
+      {activeTab === 'Clients' && <ClientsTab />}
     </div>
   );
 }
