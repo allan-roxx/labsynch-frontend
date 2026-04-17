@@ -11,8 +11,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 
 // ── Progress stepper ─────────────────────────────────────────────────────────
 const STEPS = [
-  { key: 'PENDING',    label: 'Pending' },
-  { key: 'APPROVED',   label: 'Approved' },
+  { key: 'PENDING',    label: 'Pending Payment' },
   { key: 'RESERVED',   label: 'Reserved' },
   { key: 'DISPATCHED', label: 'Dispatched' },
   { key: 'IN_USE',     label: 'In Use' },
@@ -464,8 +463,7 @@ export default function AdminBookingDetailPage() {
   const status = booking.status;
 
   // ── Derive which actions are available ──
-  // PENDING → APPROVED
-  const canApprove = status === 'PENDING';
+  // No approval needed; payment transitions PENDING → RESERVED
   // RESERVED → DISPATCHED (transport=true) or RESERVED → IN_USE (transport=false)
   // DISPATCHED → IN_USE (second issuance confirms delivery)
   const canIssue = ['RESERVED', 'DISPATCHED'].includes(status);
@@ -474,7 +472,7 @@ export default function AdminBookingDetailPage() {
   // RETURNED → COMPLETED
   const canComplete = status === 'RETURNED';
   // * → CANCELLED (early stages only)
-  const canCancel = ['PENDING', 'APPROVED', 'RESERVED'].includes(status);
+  const canCancel = ['PENDING', 'RESERVED'].includes(status);
 
   // Cost
   const equipmentCost = booking.booking_items?.reduce(
@@ -537,16 +535,6 @@ export default function AdminBookingDetailPage() {
           {downloadingPdf ? 'Downloading…' : 'Download Contract'}
         </button>
 
-        {canApprove && (
-          <button
-            disabled={!!acting}
-            onClick={() => doAction(bookingsApi.approve, 'Approve')}
-            className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {acting === 'Approve' ? '…' : 'Approve'}
-          </button>
-        )}
-
         {/* RESERVED → DISPATCHED or IN_USE; DISPATCHED → IN_USE */}
         {canIssue && (
           <button
@@ -595,14 +583,13 @@ export default function AdminBookingDetailPage() {
       <div className="mb-5 px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
         <p className="font-semibold mb-1">State Machine — current transitions available:</p>
         <ul className="space-y-0.5 list-disc list-inside">
-          {canApprove   && <li>Approve → moves booking to APPROVED</li>}
           {canIssue && status === 'RESERVED' && !booking.requires_transport && <li>Issue to School → moves to IN_USE (self-collect)</li>}
           {canIssue && status === 'RESERVED' && booking.requires_transport  && <li>Dispatch → moves to DISPATCHED (transport delivery)</li>}
           {canIssue && status === 'DISPATCHED' && <li>Confirm Delivery → moves to IN_USE</li>}
           {canReturn    && <li>Record Return → moves to RETURNED</li>}
           {canComplete  && <li>Mark Completed → moves to COMPLETED</li>}
           {canCancel    && <li>Cancel → cancels booking from {status}</li>}
-          {!canApprove && !canIssue && !canReturn && !canComplete && !canCancel && (
+          {!canIssue && !canReturn && !canComplete && !canCancel && (
             <li>No admin actions available at this stage.</li>
           )}
         </ul>

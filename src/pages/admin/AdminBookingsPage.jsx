@@ -42,15 +42,7 @@ function BookingActions({ booking, onRefresh }) {
       >
         View
       </Link>
-      {booking.status === 'PENDING' && (
-        <button
-          disabled={!!loading}
-          onClick={(e) => { e.stopPropagation(); act(bookingsApi.approve, 'Approve'); }}
-          className="px-2.5 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
-        >
-          {loading === 'Approve' ? '…' : 'Approve'}
-        </button>
-      )}
+
       {booking.status === 'RETURNED' && (
         <button
           disabled={!!loading}
@@ -60,7 +52,7 @@ function BookingActions({ booking, onRefresh }) {
           {loading === 'Complete' ? '…' : 'Complete'}
         </button>
       )}
-      {['PENDING', 'APPROVED', 'RESERVED'].includes(booking.status) && (
+      {['PENDING', 'RESERVED'].includes(booking.status) && (
         <button
           disabled={!!loading}
           onClick={(e) => { e.stopPropagation(); act(bookingsApi.cancel, 'Cancel'); }}

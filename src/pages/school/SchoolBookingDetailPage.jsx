@@ -7,8 +7,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 // New 8-state Progress Stepper
 // -----------------------------------------------------------------------------
 const STEPS = [
-  { key: 'PENDING', label: 'Submitted' },
-  { key: 'APPROVED', label: 'Approved' },
+  { key: 'PENDING', label: 'Pending Payment' },
   { key: 'RESERVED', label: 'Reserved' },
   { key: 'DISPATCHED', label: 'Dispatched' },
   { key: 'IN_USE', label: 'In Use' },
@@ -285,9 +284,9 @@ export default function SchoolBookingDetailPage() {
     );
   }
 
-  // Updated state machine logic
-  const canPay = booking.status === 'APPROVED';
-  const canCancel = ['PENDING', 'APPROVED', 'RESERVED'].includes(booking.status);
+  // Updated state machine logic: payment now allowed from PENDING
+  const canPay = booking.status === 'PENDING';
+  const canCancel = ['PENDING', 'RESERVED'].includes(booking.status);
 
   // Cost breakdown
   const rentalSubtotal = parseFloat(booking.total_amount || 0);

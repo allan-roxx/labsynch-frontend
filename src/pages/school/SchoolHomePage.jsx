@@ -4,9 +4,9 @@ import useAuthStore from '../../store/authStore';
 import { bookingsApi, paymentsApi, usersApi } from '../../api/endpoints';
 import { StatusBadge } from '../../components/ui';
 
-// Updated for new booking state machine
-const ACTIVE_STATUSES = new Set(['PENDING', 'APPROVED', 'RESERVED', 'DISPATCHED', 'IN_USE']);
-const NEEDS_PAYMENT_STATUSES = new Set(['APPROVED']);
+// Updated for new booking state machine: payment now on PENDING, no APPROVED step
+const ACTIVE_STATUSES = new Set(['PENDING', 'RESERVED', 'DISPATCHED', 'IN_USE']);
+const NEEDS_PAYMENT_STATUSES = new Set(['PENDING']);
 
 // ── Stat card 
 function StatCard({ label, value, sub }) {
@@ -201,9 +201,9 @@ function BookingRow({ booking, onRefresh }) {
     }
   };
 
-  // Updated for new state machine
-  const canPay = booking.status === 'APPROVED';
-  const canCancel = ['PENDING', 'APPROVED', 'RESERVED'].includes(booking.status);
+  // Updated for new state machine: payment allowed from PENDING
+  const canPay = booking.status === 'PENDING';
+  const canCancel = ['PENDING', 'RESERVED'].includes(booking.status);
 
   return (
     <tr className="hover:bg-gray-50 transition-colors">
