@@ -579,21 +579,6 @@ export default function AdminBookingDetailPage() {
         )}
       </div>
 
-      {/* ── State machine hint ── */}
-      <div className="mb-5 px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
-        <p className="font-semibold mb-1">State Machine — current transitions available:</p>
-        <ul className="space-y-0.5 list-disc list-inside">
-          {canIssue && status === 'RESERVED' && !booking.requires_transport && <li>Issue to School → moves to IN_USE (self-collect)</li>}
-          {canIssue && status === 'RESERVED' && booking.requires_transport  && <li>Dispatch → moves to DISPATCHED (transport delivery)</li>}
-          {canIssue && status === 'DISPATCHED' && <li>Confirm Delivery → moves to IN_USE</li>}
-          {canReturn    && <li>Record Return → moves to RETURNED</li>}
-          {canComplete  && <li>Mark Completed → moves to COMPLETED</li>}
-          {canCancel    && <li>Cancel → cancels booking from {status}</li>}
-          {!canIssue && !canReturn && !canComplete && !canCancel && (
-            <li>No admin actions available at this stage.</li>
-          )}
-        </ul>
-      </div>
 
       {/* ── Booking details ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
