@@ -7,7 +7,6 @@ import StatusBadge from '../../components/ui/StatusBadge';
 const ALL_STATUSES = [
   'ALL',
   'PENDING',
-  'APPROVED',
   'RESERVED',
   'DISPATCHED',
   'IN_USE',
