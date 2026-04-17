@@ -19,6 +19,24 @@ const EMPTY_FORM = {
   personnel_description: '',
 };
 
+// ── Field component (defined outside to prevent re-creation on each render) ──
+function Field({ name, label, type = 'text', required, value, onChange, errors }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-600 mb-1">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      <input
+        type={type}
+        value={value ?? ''}
+        onChange={onChange}
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      {errors?.[name] && <p className="text-red-600 text-xs mt-1">{errors[name][0]}</p>}
+    </div>
+  );
+}
+
 function EquipmentModal({ editTarget, categories, onClose, onSaved }) {
   const [form, setForm] = useState(editTarget ? {
     equipment_name: editTarget.equipment_name ?? '',
@@ -41,6 +59,10 @@ function EquipmentModal({ editTarget, categories, onClose, onSaved }) {
   const [saveError, setSaveError] = useState('');
 
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+  const handleFieldChange = (name, type, value) => {
+    set(name, type === 'number' ? Number(value) : value);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,21 +93,6 @@ function EquipmentModal({ editTarget, categories, onClose, onSaved }) {
     }
   };
 
-  const Field = ({ name, label, type = 'text', required }) => (
-    <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      <input
-        type={type}
-        value={form[name] ?? ''}
-        onChange={(e) => set(name, type === 'number' ? Number(e.target.value) : e.target.value)}
-        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
-      {fieldErrors[name] && <p className="text-red-600 text-xs mt-1">{fieldErrors[name][0]}</p>}
-    </div>
-  );
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
       <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -100,8 +107,8 @@ function EquipmentModal({ editTarget, categories, onClose, onSaved }) {
             <div className="px-3 py-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{saveError}</div>
           )}
           <div className="grid grid-cols-2 gap-4">
-            <Field name="equipment_name" label="Equipment Name" required />
-            <Field name="equipment_code" label="Equipment Code" required />
+            <Field name="equipment_name" label="Equipment Name" required value={form.equipment_name} onChange={(e) => handleFieldChange('equipment_name', 'text', e.target.value)} errors={fieldErrors} />
+            <Field name="equipment_code" label="Equipment Code" required value={form.equipment_code} onChange={(e) => handleFieldChange('equipment_code', 'text', e.target.value)} errors={fieldErrors} />
           </div>
 
           <div>
@@ -129,6 +136,7 @@ function EquipmentModal({ editTarget, categories, onClose, onSaved }) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
+            <Field name="total_quantity" label="Total Quantity" type="number" required value={form.total_quantity} onChange={(e) => handleFieldChange('total_quantity', 'number', e.target.value)} errors={fieldErrors} />
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Condition</label>
               <select value={form.condition} onChange={(e) => set('condition', e.target.value)}
@@ -136,19 +144,17 @@ function EquipmentModal({ editTarget, categories, onClose, onSaved }) {
                 {CONDITION_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            <Field name="total_quantity" label="Total Quantity" type="number" required />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field name="unit_price_per_day" label="Price / Day (KES)" type="number" required />
-            <Field name="storage_location" label="Storage Location" />
+            <Field name="unit_price_per_day" label="Price / Day (KES)" type="number" required value={form.unit_price_per_day} onChange={(e) => handleFieldChange('unit_price_per_day', 'number', e.target.value)} errors={fieldErrors} />
+            <Field name="storage_location" label="Storage Location" value={form.storage_location} onChange={(e) => handleFieldChange('storage_location', 'text', e.target.value)} errors={fieldErrors} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field name="acquisition_cost" label="Acquisition Cost (KES)" type="number" />
-            <Field name="acquisition_date" label="Acquisition Date" type="date" />
+            <Field name="acquisition_cost" label="Acquisition Cost (KES)" type="number" value={form.acquisition_cost} onChange={(e) => handleFieldChange('acquisition_cost', 'number', e.target.value)} errors={fieldErrors} />
+            <Field name="acquisition_date" label="Acquisition Date" type="date" value={form.acquisition_date} onChange={(e) => handleFieldChange('acquisition_date', 'text', e.target.value)} errors={fieldErrors} />
           </div>
-
           {/* Personnel section */}
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
             <div className="flex items-center gap-3">
@@ -165,7 +171,7 @@ function EquipmentModal({ editTarget, categories, onClose, onSaved }) {
             </div>
             {form.requires_personnel && (
               <>
-                <Field name="personnel_cost_per_day" label="Personnel Cost / Day (KES)" type="number" />
+                <Field name="personnel_cost_per_day" label="Personnel Cost / Day (KES)" type="number" value={form.personnel_cost_per_day} onChange={(e) => handleFieldChange('personnel_cost_per_day', 'number', e.target.value)} errors={fieldErrors} />
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Personnel Description</label>
                   <textarea
