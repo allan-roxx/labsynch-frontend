@@ -116,7 +116,7 @@ export default function SchoolEquipmentDetailPage() {
       const msg =
         err?.errors?.non_field_errors?.[0] ??
         err?.message ??
-        'Failed to add to cart. Please try again.';
+        'Failed to Add to List. Please try again.';
       setAvailError(msg);
     } finally {
       setAddingToCart(false);
@@ -356,14 +356,14 @@ export default function SchoolEquipmentDetailPage() {
               disabled={equipment.available_quantity === 0 || addingToCart || addedToCart}
               className="flex-1 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {addingToCart ? 'Adding…' : addedToCart ? 'Added!' : 'Add to Cart'}
+              {addingToCart ? 'Adding…' : addedToCart ? 'Added!' : 'Add to List'}
             </button>
           </div>
           <button
             onClick={() => navigate('/school/cart')}
             className="w-full px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors"
           >
-            View Cart &amp; Checkout
+            View List &amp; Checkout
           </button>
         </div>
       </div>
