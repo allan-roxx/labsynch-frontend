@@ -69,6 +69,8 @@ export const bookingsApi = {
   cancel: (id) => client.post(`/api/bookings/${id}/cancel/`, {}),
   approve: (id) => client.post(`/api/bookings/${id}/approve/`),
   complete: (id) => client.post(`/api/bookings/${id}/complete/`),
+  /** Admin only — marks penalty_cleared=true, unblocking the school */
+  clearPenalty: (id) => client.post(`/api/bookings/${id}/clear_penalty/`),
   /** Returns PDF blob — pipe through downloadPdf() */
   contract: (id) => client.get(`/api/bookings/${id}/contract/`, { responseType: 'blob' }),
 };
@@ -85,6 +87,7 @@ export const issuancesApi = {
   list: (params) => client.get('/api/issuances/', { params }),
   retrieve: (id) => client.get(`/api/issuances/${id}/`),
   create: (data) => client.post('/api/issuances/', data),
+  markDelivery: (id, data) => client.patch(`/api/issuances/${id}/mark_delivery/`, data),
 };
 
 export const returnsApi = {

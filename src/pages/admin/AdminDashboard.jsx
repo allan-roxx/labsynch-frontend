@@ -92,6 +92,28 @@ export default function AdminDashboard() {
         <StatCard label="Pending Damages" value={metrics?.pending_damage_reports} color="red" to="/admin/returns" />
       </div>
 
+      <h2 className="text-sm font-semibold text-gray-700 mb-3">Today's Activity</h2>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
+        <StatCard
+          label="Today's Pickups"
+          value={metrics?.today_pickups}
+          color="blue"
+          to="/admin/bookings"
+        />
+        <StatCard
+          label="Today's Returns"
+          value={metrics?.today_returns}
+          color="green"
+          to="/admin/bookings"
+        />
+        <StatCard
+          label="Awaiting Payment Today"
+          value={metrics?.today_pending_payment}
+          color="amber"
+          to="/admin/bookings"
+        />
+      </div>
+
       <p className="text-xs text-gray-400">
         Metrics loaded from <code>/api/reports/dashboard/</code>. Last refreshed on page load.
       </p>

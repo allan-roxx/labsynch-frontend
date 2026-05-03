@@ -115,9 +115,9 @@ function BookingsTab() {
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <KpiCard label="Total Bookings" value={data?.total} color="blue" />
-            <KpiCard label="Approved" value={data?.by_status.APPROVED} color="green" />
-            <KpiCard label="Cancelled" value={data?.by_status.CANCELLED} color="red" />
-            <KpiCard label="Completed" value={data?.by_status.COMPLETED} color="teal" />
+            <KpiCard label="Reserved" value={data?.by_status?.RESERVED} color="green" />
+            <KpiCard label="Cancelled" value={data?.by_status?.CANCELLED} color="red" />
+            <KpiCard label="Completed" value={data?.by_status?.COMPLETED} color="teal" />
           </div>
           {statusData.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -131,6 +131,14 @@ function BookingsTab() {
                   <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          )}
+          {data?.average_duration_days != null && (
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <p className="text-xs text-gray-500">Average Booking Duration</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {parseFloat(data.average_duration_days).toFixed(1)} days
+              </p>
             </div>
           )}
         </>
@@ -221,15 +229,41 @@ function EquipmentTab() {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleExportCsv = () => {
+    const headers = ['Equipment Name', 'Code', 'Times Booked', 'Total Units Booked', 'Total Revenue (KES)'];
+    const rows = data.map((item) => [
+      item.equipment_name ?? '',
+      item.equipment_code ?? '',
+      item.times_booked ?? item.total_bookings ?? item.booking_count ?? 0,
+      item.total_quantity_booked ?? item.total_days_booked ?? 0,
+      item.total_revenue ?? 0,
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'equipment-demand-report.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const chartData = data.slice(0, 10).map((item) => ({
     name: item.equipment_name?.substring(0, 16) + (item.equipment_name?.length > 16 ? '…' : ''),
-    bookings: item.total_bookings ?? item.booking_count ?? 0,
-    days: item.total_days_booked ?? 0,
+    bookings: item.times_booked ?? item.total_bookings ?? item.booking_count ?? 0,
   }));
 
   return (
     <div className="space-y-5">
-      <h3 className="text-sm font-semibold text-gray-900">Equipment Utilisation</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-gray-900">Equipment Demand Report</h3>
+        <button
+          onClick={handleExportCsv}
+          className="px-3 py-1.5 text-xs border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50"
+        >
+          Export CSV
+        </button>
+      </div>
       {loading ? (
         <div className="h-60 bg-gray-100 rounded-xl animate-pulse" />
       ) : (
@@ -252,9 +286,10 @@ function EquipmentTab() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Equipment</th>
-                  <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Bookings</th>
-                  <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden sm:table-cell">Days Booked</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Equipment Name</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden md:table-cell">Code</th>
+                  <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Times Booked</th>
+                  <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden sm:table-cell">Total Units</th>
                   <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden md:table-cell">Revenue</th>
                 </tr>
               </thead>
@@ -262,8 +297,9 @@ function EquipmentTab() {
                 {data.map((item, i) => (
                   <tr key={i} className="hover:bg-gray-50">
                     <td className="px-5 py-3 font-medium text-gray-900">{item.equipment_name}</td>
-                    <td className="px-5 py-3 text-right text-gray-700">{item.total_bookings ?? item.booking_count ?? '—'}</td>
-                    <td className="px-5 py-3 text-right text-gray-700 hidden sm:table-cell">{item.total_days_booked ?? '—'}</td>
+                    <td className="px-5 py-3 text-gray-500 font-mono text-xs hidden md:table-cell">{item.equipment_code ?? '—'}</td>
+                    <td className="px-5 py-3 text-right text-gray-700">{item.times_booked ?? item.total_bookings ?? item.booking_count ?? '—'}</td>
+                    <td className="px-5 py-3 text-right text-gray-700 hidden sm:table-cell">{item.total_quantity_booked ?? item.total_days_booked ?? '—'}</td>
                     <td className="px-5 py-3 text-right text-gray-700 hidden md:table-cell">
                       {item.total_revenue ? `KES ${parseFloat(item.total_revenue).toLocaleString()}` : '—'}
                     </td>
@@ -300,7 +336,7 @@ function ClientsTab() {
 
   return (
     <div className="space-y-5">
-      <h3 className="text-sm font-semibold text-gray-900">Client Activity</h3>
+      <h3 className="text-sm font-semibold text-gray-900">School Activity Report</h3>
       {loading ? (
         <div className="h-60 bg-gray-100 rounded-xl animate-pulse" />
       ) : (
@@ -321,20 +357,38 @@ function ClientsTab() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">School</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">School Name</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden md:table-cell">County</th>
                   <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Bookings</th>
-                  {/* <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden sm:table-cell">Completed</th> */}
-                  <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden md:table-cell">Total Spent</th>
+                  <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden md:table-cell">Total Spend</th>
+                  <th className="text-center px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden sm:table-cell">Liability</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {data.map((item, i) => (
                   <tr key={i} className="hover:bg-gray-50">
-                    <td className="px-5 py-3 font-medium text-gray-900">{item.school_name}</td>
+                    <td className="px-5 py-3 font-medium text-gray-900">
+                      {item.school_profile_id ? (
+                        <a href={`/admin/schools`} className="text-blue-600 hover:underline">
+                          {item.school_name}
+                        </a>
+                      ) : item.school_name}
+                    </td>
+                    <td className="px-5 py-3 text-gray-600 hidden md:table-cell">{item.county ?? '—'}</td>
                     <td className="px-5 py-3 text-right text-gray-700">{item.total_bookings ?? item.booking_count ?? '—'}</td>
-                    {/* <td className="px-5 py-3 text-right text-gray-700 hidden sm:table-cell">{item.completed_bookings ?? '—'}</td> */}
                     <td className="px-5 py-3 text-right text-gray-700 hidden md:table-cell">
                       {item.total_spend ? `KES ${parseFloat(item.total_spend).toLocaleString()}` : '—'}
+                    </td>
+                    <td className="px-5 py-3 text-center hidden sm:table-cell">
+                      {item.liability_status ? (
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          item.liability_status === 'CLEAR'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
+                        }`}>
+                          {item.liability_status === 'CLEAR' ? 'Clear' : 'Outstanding'}
+                        </span>
+                      ) : '—'}
                     </td>
                   </tr>
                 ))}

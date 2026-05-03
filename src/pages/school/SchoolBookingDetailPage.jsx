@@ -295,6 +295,11 @@ export default function SchoolBookingDetailPage() {
     (sum, item) => sum + parseFloat(item.personnel_cost || 0),
     0,
   ) ?? 0;
+  const overduePenalty = parseFloat(booking.overdue_penalty || 0);
+  const penaltyCarriedForward = parseFloat(booking.penalty_carried_forward || 0);
+  const accruingPenalty = parseFloat(booking.accruing_penalty || 0);
+  const penaltyCleared = booking.penalty_cleared ?? false;
+  const deliveryStatus = booking.issuance?.delivery_status ?? booking.delivery_status ?? null;
 
   return (
     <div>
@@ -361,6 +366,92 @@ export default function SchoolBookingDetailPage() {
       <div className="bg-white rounded-xl border border-gray-200 px-6 py-5 mb-5">
         <ProgressStepper status={booking.status} />
       </div>
+
+      {/* ── Status banners ── */}
+      {booking.status === 'OVERDUE' && (
+        <div className="mb-5 px-4 py-3 bg-red-50 border border-red-200 text-red-800 text-sm rounded-xl">
+          <p className="font-semibold mb-0.5">⚠ Your equipment is overdue.</p>
+          <p>
+            A penalty of 150% of the daily rate is being charged for every day past your agreed return date of{' '}
+            {new Date(booking.return_date).toLocaleDateString('en-KE', { year: 'numeric', month: 'long', day: 'numeric' })}.{' '}
+            Please return equipment immediately to stop the penalty clock.
+          </p>
+          {accruingPenalty > 0 && (
+            <p className="mt-1.5 font-semibold text-red-700">
+              Accruing penalty: KES {accruingPenalty.toLocaleString(undefined, { minimumFractionDigits: 2 })} (updating daily)
+            </p>
+          )}
+        </div>
+      )}
+      {booking.status === 'IN_USE' && accruingPenalty > 0 && (
+        <div className="mb-5 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl">
+          <p className="font-semibold">Accruing penalty: KES {accruingPenalty.toLocaleString(undefined, { minimumFractionDigits: 2 })} (updating daily)</p>
+          <p className="text-xs mt-0.5">Your equipment is past its return date. Return as soon as possible to stop the penalty clock.</p>
+        </div>
+      )}
+      {booking.status === 'RETURNED' && overduePenalty > 0 && (
+        <div className="mb-5 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <span>
+              Your equipment was returned late. An overdue penalty of{' '}
+              <strong>KES {overduePenalty.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong> has been added to your account.
+            </span>
+            {penaltyCleared ? (
+              <span className="px-2.5 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full shrink-0">
+                Penalty Settled
+              </span>
+            ) : (
+              <span className="px-2.5 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded-full shrink-0">
+                Penalty Unpaid – KES {overduePenalty.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+      {booking.status === 'PENDING' && (
+        <div className="mb-5 px-4 py-3 bg-blue-50 border border-blue-200 text-blue-800 text-sm rounded-xl">
+          {penaltyCarriedForward > 0 ? (
+            <>
+              <p className="font-semibold mb-2">Complete payment to reserve equipment.</p>
+              <p className="text-xs mb-1 text-blue-700">
+                Your account has outstanding late-return penalties. These have been included in this payment to clear your balance.
+              </p>
+              <div className="space-y-1 mt-2 text-xs text-blue-800">
+                <div className="flex justify-between">
+                  <span>Equipment rental subtotal</span>
+                  <span>KES {(parseFloat(booking.total_amount || 0) - penaltyCarriedForward - parseFloat(booking.transport_cost || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+                {parseFloat(booking.transport_cost || 0) > 0 && (
+                  <div className="flex justify-between">
+                    <span>Transport</span>
+                    <span>KES {parseFloat(booking.transport_cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-red-700 font-medium">
+                  <span>Outstanding penalty (previous late return)</span>
+                  <span>KES {penaltyCarriedForward.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between font-bold border-t border-blue-200 pt-1 mt-1">
+                  <span>Total due</span>
+                  <span>KES {parseFloat(booking.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            'Booking created — complete payment to reserve equipment.'
+          )}
+        </div>
+      )}
+      {deliveryStatus === 'FAILED' && (
+        <div className="mb-5 px-4 py-3 bg-red-50 border border-red-200 text-red-800 text-sm rounded-xl">
+          Your equipment was not delivered. Please contact LabSynch support.
+        </div>
+      )}
+      {deliveryStatus === 'LATE' && (
+        <div className="mb-5 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl">
+          Your equipment was delivered late. We apologise for the inconvenience.
+        </div>
+      )}
 
       {/* ── Info panels ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
@@ -534,6 +625,18 @@ export default function SchoolBookingDetailPage() {
             <div className="flex justify-between text-gray-600">
               <dt>Transport Cost</dt>
               <dd>KES {transportCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</dd>
+            </div>
+          )}
+          {overduePenalty > 0 && (
+            <div className="flex justify-between text-red-600 font-medium">
+              <dt>Overdue Penalty</dt>
+              <dd>KES {overduePenalty.toLocaleString(undefined, { minimumFractionDigits: 2 })}</dd>
+            </div>
+          )}
+          {penaltyCarriedForward > 0 && (
+            <div className="flex justify-between text-orange-600 font-medium">
+              <dt>Carried-Forward Penalty</dt>
+              <dd>KES {penaltyCarriedForward.toLocaleString(undefined, { minimumFractionDigits: 2 })}</dd>
             </div>
           )}
           <div className="border-t border-gray-100 pt-3 flex justify-between font-bold text-gray-900">

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { bookingsApi } from '../../api/endpoints';
 import StatusBadge from '../../components/ui/StatusBadge';
 
@@ -14,6 +14,12 @@ const ALL_STATUSES = [
   'OVERDUE',
   'CANCELLED',
 ];
+
+function statusLabel(s) {
+  if (s === 'ALL') return 'All';
+  if (s === 'PENDING') return 'Pending Payment';
+  return s.replace('_', ' ');
+}
 
 // Contextual action buttons per state machine
 function BookingActions({ booking, onRefresh }) {
@@ -65,13 +71,28 @@ function BookingActions({ booking, onRefresh }) {
 }
 
 export default function AdminBookingsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('ALL');
-  const [search, setSearch] = useState('');
-  const [searchInput, setSearchInput] = useState('');
-  const [page, setPage] = useState(1);
+  const statusFilter = searchParams.get('status') || 'ALL';
+  const search = searchParams.get('search') || '';
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const [searchInput, setSearchInput] = useState(search);
   const [pagination, setPagination] = useState({ count: 0, next: null, previous: null });
+
+  const setParam = (key, value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value && value !== 'ALL') next.set(key, value);
+    else next.delete(key);
+    setSearchParams(next);
+  };
+
+  const setPage = (p) => {
+    const next = new URLSearchParams(searchParams);
+    if (p > 1) next.set('page', String(p));
+    else next.delete('page');
+    setSearchParams(next);
+  };
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -95,8 +116,11 @@ export default function AdminBookingsPage() {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    setSearch(searchInput);
-    setPage(1);
+    const next = new URLSearchParams(searchParams);
+    if (searchInput) next.set('search', searchInput);
+    else next.delete('search');
+    next.delete('page');
+    setSearchParams(next);
   };
 
   return (
@@ -127,14 +151,20 @@ export default function AdminBookingsPage() {
           {ALL_STATUSES.map((s) => (
             <button
               key={s}
-              onClick={() => { setStatusFilter(s); setPage(1); }}
+              onClick={() => {
+              const next = new URLSearchParams(searchParams);
+              if (s && s !== 'ALL') next.set('status', s);
+              else next.delete('status');
+              next.delete('page');
+              setSearchParams(next);
+            }}
               className={`px-3 py-1.5 text-xs rounded-full transition-colors ${
                 statusFilter === s
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {s === 'ALL' ? 'All' : s.replace('_', ' ')}
+              {statusLabel(s)}
             </button>
           ))}
         </div>
@@ -174,7 +204,14 @@ export default function AdminBookingsPage() {
             ) : (
               bookings.map((booking) => (
                 <tr key={booking.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3 font-mono text-xs text-gray-700">{booking.booking_reference}</td>
+                  <td className="px-5 py-3 font-mono text-xs text-gray-700">
+                    {booking.booking_reference}
+                    {booking.status === 'OVERDUE' && (
+                      <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700">
+                        Equipment overdue — penalty accruing
+                      </span>
+                    )}
+                  </td>
                   <td className="px-5 py-3 text-gray-700 hidden md:table-cell">{booking.school_name}</td>
                   <td className="px-5 py-3 text-gray-600 hidden lg:table-cell">{booking.pickup_date}</td>
                   <td className="px-5 py-3 text-gray-600 hidden lg:table-cell">{booking.return_date}</td>
@@ -197,10 +234,10 @@ export default function AdminBookingsPage() {
           <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
             <span>{pagination.count} total</span>
             <div className="flex gap-2">
-              <button disabled={!pagination.previous} onClick={() => setPage((p) => Math.max(1, p - 1))}
+              <button disabled={!pagination.previous} onClick={() => setPage(Math.max(1, page - 1))}
                 className="px-3 py-1 border rounded disabled:opacity-40 hover:bg-gray-50">← Prev</button>
               <span className="px-3 py-1">Page {page}</span>
-              <button disabled={!pagination.next} onClick={() => setPage((p) => p + 1)}
+              <button disabled={!pagination.next} onClick={() => setPage(page + 1)}
                 className="px-3 py-1 border rounded disabled:opacity-40 hover:bg-gray-50">Next →</button>
             </div>
           </div>

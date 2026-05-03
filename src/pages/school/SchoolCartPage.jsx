@@ -24,6 +24,9 @@ export default function SchoolCartPage() {
   const [schoolProfile, setSchoolProfile] = useState(null);
   const [updatingTransport, setUpdatingTransport] = useState(false);
 
+  // ── Checkout result (penalty carried-forward confirmation) ─────────────────
+  const [checkoutResult, setCheckoutResult] = useState(null); // booking object after POST
+
   // ── Local removal/update in-flight tracking ─────────────────────────────────
   const [busyItems, setBusyItems] = useState(new Set());
 
@@ -33,23 +36,37 @@ export default function SchoolCartPage() {
   // Fetch cart + school profile on mount
   const fetchCart = useCallback(async () => {
     try {
-      const [cartRes, profileRes, zonesRes] = await Promise.all([
+      const [cartRes, profileRes] = await Promise.all([
         cartApi.get(),
         usersApi.mySchoolProfile(),
-        transportZonesApi.list({ page_size: 100 }),
       ]);
       const cartData = cartRes?.data ?? cartRes;
       const profile = profileRes?.data ?? profileRes;
-      const zonesData = zonesRes?.data ?? zonesRes;
-      
+
+      console.log('[Cart] cartData:', cartData);
+      console.log('[Cart] profile:', profile);
+
       setCart(cartData);
       setSchoolProfile(profile);
       setRequiresTransport(cartData?.requires_transport ?? false);
-      
-      const zonesList = zonesData?.results ?? zonesData ?? [];
-      const userZone = zonesList.find(z => z.id === profile?.transport_zone);
-      const fee = parseFloat(userZone?.base_transport_fee ?? 0);
-      setTransportFee(fee);
+
+      if (profile?.transport_zone) {
+        console.log('[Cart] transport_zone id:', profile.transport_zone);
+        try {
+          const zoneRes = await transportZonesApi.retrieve(profile.transport_zone);
+          console.log('[Cart] zoneRes (raw):', zoneRes);
+          const zone = zoneRes?.data ?? zoneRes;
+          console.log('[Cart] zone (unwrapped):', zone);
+          const fee = parseFloat(zone?.base_transport_fee ?? 0);
+          console.log('[Cart] parsed fee:', fee);
+          setTransportFee(fee);
+        } catch (zoneErr) {
+          console.error('[Cart] zone retrieve failed:', zoneErr);
+          setTransportFee(0);
+        }
+      } else {
+        console.warn('[Cart] profile has no transport_zone');
+      }
     } catch (err) {
       console.error('Failed to load cart or profile data:', err);
     } finally {
@@ -113,7 +130,13 @@ export default function SchoolCartPage() {
       const res = await cartApi.checkout();
       const booking = res?.data ?? res;
       if (booking?.id) {
-        navigate(`/school/bookings/${booking.id}`);
+        const pcf = parseFloat(booking.penalty_carried_forward || 0);
+        if (pcf > 0) {
+          // Show penalty breakdown confirmation before navigating
+          setCheckoutResult(booking);
+        } else {
+          navigate(`/school/bookings/${booking.id}`);
+        }
       } else {
         navigate('/school/bookings');
       }
@@ -137,6 +160,64 @@ export default function SchoolCartPage() {
         <div className="h-7 bg-gray-200 rounded w-48" />
         <div className="h-40 bg-gray-200 rounded-xl" />
         <div className="h-40 bg-gray-200 rounded-xl" />
+      </div>
+    );
+  }
+
+  // ── Penalty carried-forward confirmation screen ─────────────────────────────
+  if (checkoutResult) {
+    const booking = checkoutResult;
+    const pcf = parseFloat(booking.penalty_carried_forward || 0);
+    const transport = parseFloat(booking.transport_cost || 0);
+    const rentalOnly = parseFloat(booking.total_amount || 0) - pcf - transport;
+
+    return (
+      <div className="max-w-lg mx-auto py-10">
+        <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-7">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Booking Created</h2>
+              <p className="text-sm text-gray-500">{booking.booking_reference}</p>
+            </div>
+          </div>
+
+          <div className="mb-5 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl">
+            Your account has outstanding late-return penalties. These have been included in this payment to clear your balance.
+          </div>
+
+          <div className="space-y-2 text-sm mb-5">
+            <div className="flex justify-between text-gray-600">
+              <span>Equipment rental subtotal</span>
+              <span>KES {rentalOnly.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </div>
+            {transport > 0 && (
+              <div className="flex justify-between text-gray-600">
+                <span>Transport</span>
+                <span>KES {transport.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-red-600 font-medium">
+              <span>Outstanding penalty (previous late return)</span>
+              <span>KES {pcf.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex justify-between font-bold text-gray-900 border-t border-gray-100 pt-2 mt-1">
+              <span>Total due</span>
+              <span>KES {parseFloat(booking.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => navigate(`/school/bookings/${booking.id}`)}
+            className="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
+          >
+            Proceed to Payment
+          </button>
+        </div>
       </div>
     );
   }
@@ -248,7 +329,11 @@ export default function SchoolCartPage() {
                     <p className="text-xs text-gray-500">
                       KES {pricePerDay.toLocaleString()} / day
                     </p>
-                    {eq.requires_personnel && (
+                    {eq.is_consumable ? (
+                      <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-800">
+                        Single-use item — no return required
+                      </span>
+                    ) : eq.requires_personnel && (
                       <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">
                         Technician Required
                       </span>
@@ -303,7 +388,7 @@ export default function SchoolCartPage() {
                     ? `Delivery fee: KES ${transportFee.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
                     : 'Toggle on to have equipment delivered to your school.'}
                 </p>
-                {requiresTransport && !transportFee && (
+                {requiresTransport && !schoolProfile?.transport_zone && (
                   <p className="text-xs text-amber-600 mt-0.5">
                     No transport zone assigned — contact admin.
                   </p>
@@ -334,19 +419,37 @@ export default function SchoolCartPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <h3 className="font-semibold text-gray-900 mb-3">Order Summary</h3>
             <div className="space-y-2 text-sm mb-4">
-              {items.map((item) => {
-                const eq = item.equipment ?? {};
-                const pricePerDay = parseFloat(eq.unit_price_per_day ?? item.unit_price ?? 0);
-                const lineTotal = pricePerDay * item.quantity * days;
+              {(() => {
+                const consumables = items.filter((item) => item.equipment?.is_consumable);
+                const reusables = items.filter((item) => !item.equipment?.is_consumable);
+                const renderRow = (item) => {
+                  const eq = item.equipment ?? {};
+                  const pricePerDay = parseFloat(eq.unit_price_per_day ?? item.unit_price ?? 0);
+                  const lineTotal = pricePerDay * item.quantity * days;
+                  return (
+                    <div key={item.id} className="flex justify-between text-gray-600 gap-2">
+                      <span className="truncate flex-1">{eq.equipment_name} ×{item.quantity}</span>
+                      <span className="shrink-0">KES {lineTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  );
+                };
                 return (
-                  <div key={item.id} className="flex justify-between text-gray-600 gap-2">
-                    <span className="truncate flex-1">{eq.equipment_name} ×{item.quantity}</span>
-                    <span className="shrink-0">
-                      KES {lineTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
+                  <>
+                    {reusables.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Reusable Equipment</p>
+                        {reusables.map(renderRow)}
+                      </div>
+                    )}
+                    {consumables.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs font-semibold text-orange-400 uppercase mb-1">Consumables</p>
+                        {consumables.map(renderRow)}
+                      </div>
+                    )}
+                  </>
                 );
-              })}
+              })()}
               {personnelTotal > 0 && (
                 <div className="flex justify-between text-amber-700 gap-2">
                   <span className="flex-1">Personnel</span>

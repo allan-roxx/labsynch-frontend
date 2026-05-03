@@ -124,6 +124,7 @@ export default function SchoolEquipmentDetailPage() {
   };
 
   const today = new Date().toISOString().split('T')[0];
+  const tomorrow = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })();
 
   if (loading) {
     return (
@@ -260,11 +261,12 @@ export default function SchoolEquipmentDetailPage() {
                 <label className="block text-xs font-medium text-gray-600 mb-1">Pickup Date</label>
                 <input
                   type="date"
-                  min={today}
+                  min={tomorrow}
                   value={pickupDate}
                   onChange={(e) => { setPickupDate(e.target.value); setAvailability(null); }}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                <p className="text-[10px] text-gray-400 mt-1">Bookings must be made at least 1 day in advance.</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Return Date</label>

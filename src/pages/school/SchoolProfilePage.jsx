@@ -1,6 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { usersApi, transportZonesApi } from '../../api/endpoints';
 import StatusBadge from '../../components/ui/StatusBadge';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+function DraggableMarker({ position, onChange }) {
+  useMapEvents({
+    click(e) {
+      onChange(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return position[0] && position[1] ? (
+    <Marker
+      position={position}
+      draggable
+      eventHandlers={{
+        dragend(e) {
+          const { lat, lng } = e.target.getLatLng();
+          onChange(lat, lng);
+        },
+      }}
+    />
+  ) : null;
+}
 
 export default function SchoolProfilePage() {
   const [profile, setProfile] = useState(null);
@@ -29,6 +59,8 @@ export default function SchoolProfilePage() {
           physical_address:     data.physical_address     ?? '',
           phone_number:         data.phone_number         ?? '',
           transport_zone:       data.transport_zone       ?? '',
+          gps_latitude:         data.gps_latitude         ?? '',
+          gps_longitude:        data.gps_longitude        ?? '',
         });
       })
       .catch(console.error)
@@ -158,7 +190,7 @@ export default function SchoolProfilePage() {
               { key: 'contact_person',       label: 'Contact Person' },
               { key: 'contact_designation',  label: 'Designation' },
               { key: 'physical_address',     label: 'Physical Address' },
-              { key: 'phone_number',         label: 'Phone Number' },
+
             ].map(({ key, label, required }) => (
               <div key={key}>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -211,6 +243,52 @@ export default function SchoolProfilePage() {
               )}
             </div>
 
+            {/* GPS Map Picker */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Pickup Location (GPS)</label>
+              <div className="rounded-xl overflow-hidden border border-gray-200 mb-2" style={{ height: '260px' }}>
+                <MapContainer
+                  center={[
+                    parseFloat(form.gps_latitude) || -1.286389,
+                    parseFloat(form.gps_longitude) || 36.817223,
+                  ]}
+                  zoom={form.gps_latitude ? 14 : 6}
+                  style={{ height: '100%', width: '100%' }}
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  />
+                  <DraggableMarker
+                    position={[parseFloat(form.gps_latitude) || null, parseFloat(form.gps_longitude) || null]}
+                    onChange={(lat, lng) => { set('gps_latitude', lat); set('gps_longitude', lng); }}
+                  />
+                </MapContainer>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!navigator.geolocation) return;
+                  navigator.geolocation.getCurrentPosition(
+                    (pos) => { set('gps_latitude', pos.coords.latitude); set('gps_longitude', pos.coords.longitude); },
+                    () => {},
+                  );
+                }}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                Detect my location
+              </button>
+              {form.gps_latitude && form.gps_longitude && (
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Lat: {parseFloat(form.gps_latitude).toFixed(6)}, Lng: {parseFloat(form.gps_longitude).toFixed(6)}
+                  {' '}
+                  <button type="button" className="text-red-400 hover:text-red-600" onClick={() => { set('gps_latitude', ''); set('gps_longitude', ''); }}>
+                    Clear
+                  </button>
+                </p>
+              )}
+            </div>
+
             <div className="flex gap-3 pt-2">
               <button
                 type="submit"
@@ -229,22 +307,45 @@ export default function SchoolProfilePage() {
             </div>
           </form>
         ) : (
-          <dl className="space-y-3 text-sm">
-            {[
-              ['School Name',     profile?.school_name],
-              ['Contact Person',  profile?.contact_person],
-              ['Designation',     profile?.contact_designation],
-              ['Physical Address',profile?.physical_address],
-              ['Phone Number',    profile?.phone_number],
-              ['Email',           profile?.user_email],
-              ['Transport Zone',  profile?.transport_zone_name],
-            ].map(([label, value]) => (
-              <div key={label} className="flex justify-between gap-3">
-                <dt className="text-gray-500 shrink-0">{label}</dt>
-                <dd className="font-medium text-gray-900 text-right">{value || '—'}</dd>
+          <>
+            <dl className="space-y-3 text-sm">
+              {[
+                ['School Name',     profile?.school_name],
+                ['Contact Person',  profile?.contact_person],
+                ['Designation',     profile?.contact_designation],
+                ['Physical Address',profile?.physical_address],
+                ['Email',           profile?.user_email],
+                ['Transport Zone',  profile?.transport_zone_name],
+              ].map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-3">
+                  <dt className="text-gray-500 shrink-0">{label}</dt>
+                  <dd className="font-medium text-gray-900 text-right">{value || '—'}</dd>
+                </div>
+              ))}
+            </dl>
+            {/* GPS read-only map */}
+            {profile?.gps_latitude && profile?.gps_longitude ? (
+              <div className="mt-4">
+                <p className="text-xs font-medium text-gray-500 mb-1">School Location</p>
+                <div className="rounded-xl overflow-hidden border border-gray-200" style={{ height: '200px' }}>
+                  <MapContainer
+                    center={[parseFloat(profile.gps_latitude), parseFloat(profile.gps_longitude)]}
+                    zoom={14}
+                    style={{ height: '100%', width: '100%' }}
+                    scrollWheelZoom={false}
+                  >
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    />
+                    <Marker position={[parseFloat(profile.gps_latitude), parseFloat(profile.gps_longitude)]} />
+                  </MapContainer>
+                </div>
               </div>
-            ))}
-          </dl>
+            ) : (
+              <p className="text-xs text-gray-400 mt-3">No location set — click Edit Profile to add your GPS location.</p>
+            )}
+          </>
         )}
       </div>
     </div>

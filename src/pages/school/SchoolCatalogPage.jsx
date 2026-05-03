@@ -37,6 +37,11 @@ function EquipmentCard({ equipment }) {
             Technician
           </span>
         )}
+        {equipment.is_consumable && (
+          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-400 text-white">
+            Consumable
+          </span>
+        )}
       </div>
       <div className="p-4 flex flex-col flex-1">
         <p className="text-xs text-gray-500 mb-1">{equipment.category?.category_name}</p>
@@ -108,12 +113,10 @@ export default function SchoolCatalogPage() {
       const params = { page_size: 24 };
       if (searchQuery) params.search = searchQuery;
       if (ordering) params.ordering = ordering;
+      if (selectedCategory) params.category = selectedCategory;
       const res = await equipmentApi.list(params);
       const payload = res?.data ?? res;
-      let results = payload?.results || (Array.isArray(payload) ? payload : []);
-      if (selectedCategory) {
-        results = results.filter((e) => e.category?.id === selectedCategory);
-      }
+      const results = payload?.results || (Array.isArray(payload) ? payload : []);
       setEquipment(results);
     } catch (err) {
       console.error('Failed to fetch equipment:', err);
@@ -146,8 +149,8 @@ export default function SchoolCatalogPage() {
 
   const handleCategoryClick = (catId) => {
     const next = new URLSearchParams(searchParams);
-    if (catId === '' || catId === selectedCategory) next.delete('category');
-    else next.set('category', catId);
+    if (catId === '' || String(catId) === selectedCategory) next.delete('category');
+    else next.set('category', String(catId));
     setSearchParams(next);
   };
 
@@ -181,7 +184,7 @@ export default function SchoolCatalogPage() {
             <li key={cat.id}>
               <button
                 onClick={() => handleCategoryClick(cat.id)}
-                className={`w-full text-left text-sm px-3 py-2 rounded-lg transition-colors ${selectedCategory === cat.id
+                className={`w-full text-left text-sm px-3 py-2 rounded-lg transition-colors ${selectedCategory === String(cat.id)
                     ? 'bg-blue-50 text-blue-700 font-medium'
                     : 'text-gray-600 hover:bg-gray-100'
                   }`}

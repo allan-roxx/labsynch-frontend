@@ -169,6 +169,22 @@ export default function SchoolBookingsPage() {
                 >
                   <td className="px-5 py-3 font-medium text-gray-900">
                     {booking.booking_reference}
+                    {booking.status === 'OVERDUE' && (
+                      <span className="block mt-0.5 text-[10px] text-red-600 font-medium">
+                        Equipment overdue — penalty accruing
+                      </span>
+                    )}
+                    {parseFloat(booking.overdue_penalty || 0) > 0 && (
+                      booking.penalty_cleared ? (
+                        <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700">
+                          Penalty Settled
+                        </span>
+                      ) : (
+                        <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700">
+                          Penalty Unpaid – KES {parseFloat(booking.overdue_penalty).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      )
+                    )}
                   </td>
                   <td className="px-5 py-3 text-gray-600 hidden md:table-cell">
                     {booking.pickup_date}

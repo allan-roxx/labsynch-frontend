@@ -14,6 +14,7 @@ const EMPTY_FORM = {
   storage_location: '',
   acquisition_cost: '',
   acquisition_date: '',
+  is_consumable: false,
   requires_personnel: false,
   personnel_cost_per_day: '',
   personnel_description: '',
@@ -49,6 +50,7 @@ function EquipmentModal({ editTarget, categories, onClose, onSaved }) {
     storage_location: editTarget.storage_location ?? '',
     acquisition_cost: editTarget.acquisition_cost ?? '',
     acquisition_date: editTarget.acquisition_date ?? '',
+    is_consumable: editTarget.is_consumable ?? false,
     requires_personnel: editTarget.requires_personnel ?? false,
     personnel_cost_per_day: editTarget.personnel_cost_per_day ?? '',
     personnel_description: editTarget.personnel_description ?? '',
@@ -155,6 +157,20 @@ function EquipmentModal({ editTarget, categories, onClose, onSaved }) {
             <Field name="acquisition_cost" label="Acquisition Cost (KES)" type="number" value={form.acquisition_cost} onChange={(e) => handleFieldChange('acquisition_cost', 'number', e.target.value)} errors={fieldErrors} />
             <Field name="acquisition_date" label="Acquisition Date" type="date" value={form.acquisition_date} onChange={(e) => handleFieldChange('acquisition_date', 'text', e.target.value)} errors={fieldErrors} />
           </div>
+          {/* Consumable toggle */}
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="is_consumable"
+              checked={form.is_consumable}
+              onChange={(e) => set('is_consumable', e.target.checked)}
+              className="rounded"
+            />
+            <label htmlFor="is_consumable" className="text-sm font-medium text-gray-700">
+              Consumable item (single-use, no return required)
+            </label>
+          </div>
+
           {/* Personnel section */}
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
             <div className="flex items-center gap-3">
@@ -207,6 +223,8 @@ export default function AdminEquipmentPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [consumableFilter, setConsumableFilter] = useState('ALL'); // 'ALL' | 'CONSUMABLE' | 'REUSABLE'
+  const [showAcqCost, setShowAcqCost] = useState(false);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ count: 0, next: null, previous: null });
   const [showModal, setShowModal] = useState(false);
@@ -218,6 +236,8 @@ export default function AdminEquipmentPage() {
     try {
       const params = { page, page_size: 15, ordering: 'equipment_name' };
       if (search) params.search = search;
+      if (consumableFilter === 'CONSUMABLE') params.is_consumable = true;
+      if (consumableFilter === 'REUSABLE') params.is_consumable = false;
       const res = await equipmentApi.list(params);
       const payload = res?.data ?? res;
       const results = payload?.results || (Array.isArray(payload) ? payload : []);
@@ -228,7 +248,7 @@ export default function AdminEquipmentPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, search, consumableFilter]);
 
   useEffect(() => { fetchEquipment(); }, [fetchEquipment]);
   useEffect(() => {
@@ -274,7 +294,7 @@ export default function AdminEquipmentPage() {
         </button>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
         <form onSubmit={(e) => { e.preventDefault(); setSearch(searchInput); setPage(1); }} className="flex gap-2">
           <input
             type="text"
@@ -285,6 +305,29 @@ export default function AdminEquipmentPage() {
           />
           <button type="submit" className="px-3 py-2 border border-gray-300 text-sm rounded-lg hover:bg-gray-50">Search</button>
         </form>
+        <div className="flex gap-1.5">
+          {['ALL', 'CONSUMABLE', 'REUSABLE'].map((f) => (
+            <button
+              key={f}
+              onClick={() => { setConsumableFilter(f); setPage(1); }}
+              className={`px-3 py-1.5 text-xs rounded-full transition-colors ${
+                consumableFilter === f
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {f === 'ALL' ? 'All Types' : f === 'CONSUMABLE' ? 'Consumables' : 'Reusables'}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setShowAcqCost((v) => !v)}
+          className={`px-3 py-1.5 text-xs rounded-full transition-colors ${
+            showAcqCost ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          {showAcqCost ? 'Hide Acq. Cost' : 'Show Acq. Cost'}
+        </button>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -298,6 +341,10 @@ export default function AdminEquipmentPage() {
                 <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden sm:table-cell">Price/Day</th>
                 <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden lg:table-cell">Available</th>
                 <th className="text-center px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden xl:table-cell">Personnel</th>
+              <th className="text-center px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden xl:table-cell">Type</th>
+              {showAcqCost && (
+                <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden lg:table-cell">Acq. Cost</th>
+              )}
                 <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Actions</th>
               </tr>
             </thead>
@@ -341,6 +388,17 @@ export default function AdminEquipmentPage() {
                         : <span className="text-gray-400 text-xs">No</span>
                       }
                     </td>
+                    <td className="px-5 py-3 text-center hidden xl:table-cell">
+                      {eq.is_consumable
+                        ? <span className="px-2 py-0.5 rounded-full text-xs bg-orange-100 text-orange-800">Consumable</span>
+                        : <span className="text-gray-400 text-xs">Reusable</span>
+                      }
+                    </td>
+                    {showAcqCost && (
+                      <td className="px-5 py-3 text-right text-gray-600 hidden lg:table-cell text-xs">
+                        {eq.acquisition_cost ? `KES ${parseFloat(eq.acquisition_cost).toLocaleString()}` : '—'}
+                      </td>
+                    )}
                     <td className="px-5 py-3 text-right">
                       <div className="flex gap-1.5 justify-end">
                         <button

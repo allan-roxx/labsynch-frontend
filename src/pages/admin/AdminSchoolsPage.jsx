@@ -1,6 +1,60 @@
 import { useState, useEffect, useCallback } from 'react';
 import { schoolProfilesApi, transportZonesApi } from '../../api/endpoints';
 import StatusBadge from '../../components/ui/StatusBadge';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix default marker icon for leaflet in Vite/webpack
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+function SchoolMapModal({ school, onClose }) {
+  const lat = parseFloat(school.gps_latitude);
+  const lng = parseFloat(school.gps_longitude);
+  const hasCoords = !isNaN(lat) && !isNaN(lng);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">{school.school_name}</h2>
+            <p className="text-xs text-gray-500 mt-0.5">School Location</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+        </div>
+        <div className="p-4">
+          {hasCoords ? (
+            <MapContainer
+              center={[lat, lng]}
+              zoom={14}
+              style={{ height: '300px', width: '100%', borderRadius: '8px' }}
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              />
+              <Marker position={[lat, lng]} />
+            </MapContainer>
+          ) : (
+            <div className="h-40 flex items-center justify-center bg-gray-50 rounded-xl text-sm text-gray-500">
+              No location set — ask the school to update their profile.
+            </div>
+          )}
+          {hasCoords && (
+            <p className="text-xs text-gray-400 mt-2">
+              Lat: {lat.toFixed(6)}, Lng: {lng.toFixed(6)}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function TransportZoneSelect({ value, onChange }) {
   const [zones, setZones] = useState([]);
@@ -35,6 +89,7 @@ export default function AdminSchoolsPage() {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ count: 0, next: null, previous: null });
   const [updatingZone, setUpdatingZone] = useState(null);
+  const [mapSchool, setMapSchool] = useState(null);
 
   const fetchSchools = useCallback(async () => {
     setLoading(true);
@@ -126,6 +181,7 @@ export default function AdminSchoolsPage() {
                 <th className="text-center px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Liability</th>
                 <th className="text-center px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Account</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Transport Zone</th>
+              <th className="text-center px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Location</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -174,6 +230,14 @@ export default function AdminSchoolsPage() {
                         )}
                       </div>
                     </td>
+                    <td className="px-5 py-3 text-center">
+                      <button
+                        onClick={() => setMapSchool(school)}
+                        className="px-2.5 py-1 text-xs border border-gray-200 text-gray-600 rounded hover:bg-gray-50 transition-colors"
+                      >
+                        {(school.gps_latitude && school.gps_longitude) ? 'View Map' : 'No Location'}
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -194,6 +258,9 @@ export default function AdminSchoolsPage() {
           </div>
         )}
       </div>
+      {mapSchool && (
+        <SchoolMapModal school={mapSchool} onClose={() => setMapSchool(null)} />
+      )}
     </div>
   );
 }
