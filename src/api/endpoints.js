@@ -141,6 +141,15 @@ export const reportsApi = {
   clients: () => client.get('/api/reports/clients/'),
 };
 
+export const notificationsApi = {
+  list: (params) => client.get('/api/notifications/', { params }),
+  /** Retrieve one — auto-marks it read on the backend */
+  retrieve: (id) => client.get(`/api/notifications/${id}/`),
+  markRead: (id) => client.post(`/api/notifications/${id}/read/`),
+  markAllRead: () => client.post('/api/notifications/read-all/'),
+  unreadCount: () => client.get('/api/notifications/unread-count/'),
+};
+
 /**
  * downloadPdf — trigger a browser download from a Blob API response.
  * The PDF endpoints return responseType:'blob' so pass the raw response.

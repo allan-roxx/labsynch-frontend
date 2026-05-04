@@ -36,6 +36,7 @@ import SchoolCartPage from './pages/school/SchoolCartPage';
 import SchoolPaymentsPage from './pages/school/SchoolPaymentsPage';
 import SchoolProfilePage from './pages/school/SchoolProfilePage';
 import SchoolHelpPage from './pages/school/SchoolHelpPage';
+import SchoolNotificationsPage from './pages/school/SchoolNotificationsPage';
 
 export default function App() {
   return (
@@ -76,6 +77,7 @@ export default function App() {
             <Route path="/school/payments" element={<SchoolPaymentsPage />} />
             <Route path="/school/profile" element={<SchoolProfilePage />} />
             <Route path="/school/help" element={<SchoolHelpPage />} />
+            <Route path="/school/notifications" element={<SchoolNotificationsPage />} />
           </Route>
         </Route>
 
