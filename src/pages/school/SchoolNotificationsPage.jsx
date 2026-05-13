@@ -64,6 +64,16 @@ const TYPE_META = {
     color: 'text-indigo-600 bg-indigo-100',
     link: () => '/school/payments',
   },
+  BOOKING_AT_RISK: {
+    label: 'Booking at Risk',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+      </svg>
+    ),
+    color: 'text-amber-700 bg-amber-100',
+    link: (n) => n.booking_id ? `/school/bookings/${n.booking_id}` : null,
+  },
 };
 
 const DEFAULT_META = {
@@ -97,6 +107,7 @@ const FILTER_OPTIONS = [
   { label: 'All', value: '' },
   { label: 'Unread', value: 'unread' },
   { label: 'Bookings', value: 'BOOKING_CREATED' },
+  { label: 'At Risk', value: 'BOOKING_AT_RISK' },
   { label: 'Payments', value: 'PAYMENT_RECEIVED' },
   { label: 'Penalties', value: 'PENALTY_CLEARED' },
 ];

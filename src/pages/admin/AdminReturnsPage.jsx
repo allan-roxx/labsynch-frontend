@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { returnsApi, damagesApi, bookingsApi } from '../../api/endpoints';
 import StatusBadge from '../../components/ui/StatusBadge';
+import ExportButton from '../../components/ui/ExportButton';
 
 const RESOLUTION_STATUSES = ['ALL', 'PENDING', 'CHARGED', 'PAID', 'WAIVED', 'RESOLVED'];
 const SEVERITIES           = ['ALL', 'MINOR', 'MODERATE', 'SEVERE'];
@@ -598,15 +599,25 @@ function DamagesTab({ initialReturn = null, onClearInitialReturn }) {
             ))}
           </div>
         </div>
-        <button
-          onClick={() => { setPreloadReturn(null); setShowCreateModal(true); }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 shrink-0"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Log Damage
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <ExportButton
+            endpoint="/api/damages/export/"
+            params={{
+              ...(resFilter !== 'ALL' ? { resolution_status: resFilter } : {}),
+              ...(sevFilter !== 'ALL' ? { severity: sevFilter } : {}),
+            }}
+            filename="damages"
+          />
+          <button
+            onClick={() => { setPreloadReturn(null); setShowCreateModal(true); }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Log Damage
+          </button>
+        </div>
       </div>
 
       {/* Table */}

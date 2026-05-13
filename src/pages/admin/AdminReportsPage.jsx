@@ -116,7 +116,7 @@ function BookingsTab() {
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <KpiCard label="Total Bookings" value={data?.total} color="blue" />
             <KpiCard label="Reserved" value={data?.by_status?.RESERVED} color="green" />
-            <KpiCard label="Cancelled" value={data?.by_status?.CANCELLED} color="red" />
+            <KpiCard label="Returned" value={data?.by_status?.RETURNED} color="red" />
             <KpiCard label="Completed" value={data?.by_status?.COMPLETED} color="teal" />
           </div>
           {statusData.length > 0 && (

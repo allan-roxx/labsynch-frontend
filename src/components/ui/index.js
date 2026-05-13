@@ -3,3 +3,4 @@ export { default as Input } from './Input';
 export { default as Alert } from './Alert';
 export { default as Spinner } from './Spinner';
 export { default as StatusBadge } from './StatusBadge';
+export { default as ExportButton } from './ExportButton';

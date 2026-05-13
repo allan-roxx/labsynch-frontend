@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { schoolProfilesApi, transportZonesApi } from '../../api/endpoints';
 import StatusBadge from '../../components/ui/StatusBadge';
+import ExportButton from '../../components/ui/ExportButton';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -136,6 +137,14 @@ export default function AdminSchoolsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Schools</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage client school profiles and zones.</p>
         </div>
+        <ExportButton
+          endpoint="/api/school-profiles/export/"
+          params={{
+            ...(search ? { search } : {}),
+            ...(liabilityFilter !== 'ALL' ? { liability_status: liabilityFilter } : {}),
+          }}
+          filename="schools"
+        />
       </div>
 
       {/* Filters */}

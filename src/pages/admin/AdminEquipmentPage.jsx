@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { equipmentApi, equipmentCategoriesApi } from '../../api/endpoints';
 import StatusBadge from '../../components/ui/StatusBadge';
+import ExportButton from '../../components/ui/ExportButton';
 
 const CONDITION_OPTIONS = ['NEW', 'GOOD', 'FAIR', 'NEEDS_MAINTENANCE'];
 const EMPTY_FORM = {
@@ -283,15 +284,29 @@ export default function AdminEquipmentPage() {
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Equipment</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Equipment Inventory</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage laboratory equipment inventory.</p>
         </div>
-        <button
-          onClick={() => { setEditTarget(null); setShowModal(true); }}
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          + Add Equipment
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            endpoint="/api/equipment/export/"
+            params={{
+              ...(search ? { search } : {}),
+              ...(consumableFilter === 'CONSUMABLE'
+                ? { is_consumable: true }
+                : consumableFilter === 'REUSABLE'
+                ? { is_consumable: false }
+                : {}),
+            }}
+            filename="equipment"
+          />
+          <button
+            onClick={() => { setEditTarget(null); setShowModal(true); }}
+            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            + Add Equipment
+          </button>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">

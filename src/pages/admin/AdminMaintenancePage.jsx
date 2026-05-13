@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { maintenanceApi, equipmentApi } from '../../api/endpoints';
 import StatusBadge from '../../components/ui/StatusBadge';
+import ExportButton from '../../components/ui/ExportButton';
 
 const ALL_STATUSES = ['ALL', 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
 const ALL_TYPES    = ['ALL', 'ROUTINE', 'REPAIR', 'CALIBRATION'];
@@ -355,15 +356,26 @@ export default function AdminMaintenancePage() {
           <h1 className="text-2xl font-bold text-gray-900">Maintenance</h1>
           <p className="text-sm text-gray-500 mt-0.5">Schedule and track equipment maintenance activities.</p>
         </div>
-        <button
-          onClick={() => setModal({ mode: 'create' })}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Schedule Maintenance
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            endpoint="/api/maintenance/export/"
+            params={{
+              ...(search ? { search } : {}),
+              ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
+              ...(typeFilter !== 'ALL' ? { maintenance_type: typeFilter } : {}),
+            }}
+            filename="maintenance"
+          />
+          <button
+            onClick={() => setModal({ mode: 'create' })}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Schedule Maintenance
+          </button>
+        </div>
       </div>
 
       {/* Filters */}

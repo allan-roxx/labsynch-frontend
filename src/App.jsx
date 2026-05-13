@@ -7,6 +7,10 @@ import SchoolLayout from './layouts/SchoolLayout';
 // Guards
 import ProtectedRoute from './components/ProtectedRoute';
 
+// Public pages
+import LandingPage from './pages/LandingPage';
+import TermsPage from './pages/TermsPage';
+
 // Auth pages
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -43,6 +47,8 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* ── Public auth routes ── */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/terms" element={<TermsPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -81,9 +87,8 @@ export default function App() {
           </Route>
         </Route>
 
-        {/* ── Root redirect ── */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* ── Fallback ── */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -12,6 +12,7 @@ const ACCOUNT_FIELDS = {
   phone_number: '',
   school_name: '',
   registration_number: '',
+  terms_accepted: false,
 };
 
 // Extra profile fields — patched after registration
@@ -46,6 +47,7 @@ export default function RegisterPage() {
     if (form.password !== form.confirm_password)
       errors.confirm_password = 'Passwords do not match.';
     if (!form.school_name) errors.school_name = 'School name is required.';
+    if (!form.terms_accepted) errors.terms_accepted = 'You must accept the Terms and Conditions to create an account.';
     return errors;
   };
 
@@ -66,6 +68,7 @@ export default function RegisterPage() {
         phone_number:        form.phone_number,
         school_name:         form.school_name,
         registration_number: form.registration_number,
+        terms_accepted:      true,
       };
       const regRes = await authApi.register(registrationPayload);
       const regData = regRes?.data ?? regRes;
@@ -223,6 +226,36 @@ export default function RegisterPage() {
                 </div>
               </div>
             </fieldset>
+
+            {/* ── Terms acceptance ── */}
+            <div className="space-y-1">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="terms_accepted"
+                  checked={form.terms_accepted}
+                  onChange={(e) => {
+                    setForm((prev) => ({ ...prev, terms_accepted: e.target.checked }));
+                    setFieldErrors((prev) => ({ ...prev, terms_accepted: '' }));
+                  }}
+                  className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">
+                  I have read and agree to the{' '}
+                  <Link
+                    to="/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline font-medium"
+                  >
+                    Terms &amp; Conditions
+                  </Link>
+                </span>
+              </label>
+              {fieldErrors.terms_accepted && (
+                <p className="text-red-600 text-xs pl-6">{fieldErrors.terms_accepted}</p>
+              )}
+            </div>
 
             <Button type="submit" loading={loading} className="w-full">
               Create account

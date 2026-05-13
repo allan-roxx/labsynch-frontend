@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { bookingsApi } from '../../api/endpoints';
 import StatusBadge from '../../components/ui/StatusBadge';
+import ExportButton from '../../components/ui/ExportButton';
 
 const ALL_STATUSES = [
   'ALL',
@@ -131,6 +132,14 @@ export default function AdminBookingsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Bookings</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage all equipment rental bookings.</p>
         </div>
+        <ExportButton
+          endpoint="/api/bookings/export/"
+          params={{
+            ...(search ? { search } : {}),
+            ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
+          }}
+          filename="bookings"
+        />
       </div>
 
       {/* Filters */}
