@@ -3,6 +3,7 @@ import { reportsApi } from '../../api/endpoints';
 import {
   BarChart, Bar,
   LineChart, Line,
+  ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   PieChart, Pie, Cell,
 } from 'recharts';
@@ -53,20 +54,128 @@ function DateRangeFilter({ startDate, endDate, onChangeDates }) {
   );
 }
 
+// ── Granularity Picker ──
+function GranularityPicker({ value, onChange }) {
+  return (
+    <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+      {['day', 'week', 'month'].map((g) => (
+        <button
+          key={g}
+          onClick={() => onChange(g)}
+          className={`px-3 py-1 text-xs font-medium rounded-md transition-colors capitalize ${
+            value === g ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          {g}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── Overview Tab ──
 function OverviewTab({ metrics }) {
   if (!metrics) return <div className="text-center py-10 text-gray-400">Loading metrics…</div>;
   const fmtKes = (n) => `KES ${parseFloat(n || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
+
+  const bookingsTrend = (metrics.bookings_trend ?? []).map((d) => ({
+    label: d.date?.slice(5),   // "MM-DD"
+    count: d.count ?? 0,
+  }));
+  const revenueTrend = (metrics.revenue_trend ?? []).map((d) => ({
+    label: d.date?.slice(5),
+    revenue: parseFloat(d.revenue ?? 0),
+  }));
+  const monthlyBookings = (metrics.monthly_bookings ?? []).map((d) => ({
+    label: d.month,
+    count: d.count ?? 0,
+  }));
+  const monthlyRevenue = (metrics.monthly_revenue ?? []).map((d) => ({
+    label: d.month,
+    revenue: parseFloat(d.revenue ?? 0),
+  }));
+
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      <KpiCard label="Total Bookings" value={metrics.total_bookings} color="blue" />
-      <KpiCard label="Active Bookings" value={metrics.active_bookings} color="green" />
-      <KpiCard label="Overdue Bookings" value={metrics.overdue_bookings} color="red" />
-      <KpiCard label="Total Equipment" value={metrics.total_equipment} color="blue" />
-      <KpiCard label="Total Revenue" value={fmtKes(metrics.revenue_total)} color="teal" />
-      <KpiCard label="Revenue This Month" value={fmtKes(metrics.revenue_this_month)} color="teal" />
-      <KpiCard label="Client Schools" value={metrics.total_schools} color="amber" />
-      <KpiCard label="Pending Damages" value={metrics.pending_damage_reports} color="red" />
+    <div className="space-y-6">
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KpiCard label="Total Bookings" value={metrics.total_bookings} color="blue" />
+        <KpiCard label="Active Bookings" value={metrics.active_bookings} color="green" />
+        <KpiCard label="Overdue Bookings" value={metrics.overdue_bookings} color="red" />
+        <KpiCard label="Total Equipment" value={metrics.total_equipment} color="blue" />
+        <KpiCard label="Total Revenue" value={fmtKes(metrics.revenue_total)} color="teal" />
+        <KpiCard label="Revenue This Month" value={fmtKes(metrics.revenue_this_month)} color="teal" />
+        <KpiCard label="Client Schools" value={metrics.total_schools} color="amber" />
+        <KpiCard label="Pending Damages" value={metrics.pending_damage_reports} color="red" />
+      </div>
+
+      {/* 30-day trends side by side */}
+      {(bookingsTrend.length > 0 || revenueTrend.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {bookingsTrend.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <p className="text-xs font-semibold text-gray-700 mb-4">Daily Bookings — Last 30 Days</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={bookingsTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={false} name="Bookings" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+          {revenueTrend.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <p className="text-xs font-semibold text-gray-700 mb-4">Daily Revenue — Last 30 Days (KES)</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={revenueTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
+                  <Tooltip formatter={(v) => `KES ${parseFloat(v).toLocaleString('en-KE')}`} />
+                  <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} name="Revenue" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Monthly trends side by side */}
+      {(monthlyBookings.length > 0 || monthlyRevenue.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {monthlyBookings.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <p className="text-xs font-semibold text-gray-700 mb-4">Monthly Bookings — Last 12 Months</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={monthlyBookings}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} name="Bookings" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+          {monthlyRevenue.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <p className="text-xs font-semibold text-gray-700 mb-4">Monthly Revenue — Last 12 Months (KES)</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={monthlyRevenue}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
+                  <Tooltip formatter={(v) => `KES ${parseFloat(v).toLocaleString('en-KE')}`} />
+                  <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} name="Revenue" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -77,11 +186,12 @@ function BookingsTab() {
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [granularity, setGranularity] = useState('month');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
+      const params = { granularity };
       if (startDate) params.start_date = startDate;
       if (endDate) params.end_date = endDate;
       const res = await reportsApi.bookings(params);
@@ -91,26 +201,41 @@ function BookingsTab() {
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, granularity]);
 
   useEffect(() => { load(); }, [load]);
 
-  const statusData = data?.bookings_by_status
-    ? Object.entries(data.bookings_by_status).map(([status, count]) => ({ status, count }))
+  // by_status: {"PENDING": 10, "CONFIRMED": 30, ...}
+  const statusData = data?.by_status
+    ? Object.entries(data.by_status).map(([status, count]) => ({ status, count }))
     : [];
+
+  // by_period: [{"period": "2026-01", "count": 12}, ...]
+  const periodData = (data?.by_period ?? []).map((d) => ({
+    label: d.period,
+    count: d.count ?? 0,
+  }));
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h3 className="text-sm font-semibold text-gray-900">Booking Analytics</h3>
-        <DateRangeFilter
-          startDate={startDate}
-          endDate={endDate}
-          onChangeDates={(s, e) => { setStartDate(s); setEndDate(e); }}
-        />
+        <div className="flex items-center gap-3 flex-wrap">
+          <GranularityPicker value={granularity} onChange={setGranularity} />
+          <DateRangeFilter
+            startDate={startDate}
+            endDate={endDate}
+            onChangeDates={(s, e) => { setStartDate(s); setEndDate(e); }}
+          />
+        </div>
       </div>
       {loading ? (
-        <div className="h-60 bg-gray-100 rounded-xl animate-pulse" />
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 animate-pulse">
+            {[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-gray-100 rounded-xl" />)}
+          </div>
+          <div className="h-60 bg-gray-100 rounded-xl animate-pulse" />
+        </div>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -119,20 +244,41 @@ function BookingsTab() {
             <KpiCard label="Returned" value={data?.by_status?.RETURNED} color="red" />
             <KpiCard label="Completed" value={data?.by_status?.COMPLETED} color="teal" />
           </div>
+
+          {/* Bookings over time */}
+          {periodData.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <p className="text-xs font-semibold text-gray-700 mb-4 capitalize">
+                Bookings Over Time ({granularity}ly)
+              </p>
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={periodData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} name="Bookings" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Bookings by status */}
           {statusData.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-5">
               <p className="text-xs font-semibold text-gray-700 mb-4">Bookings by Status</p>
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={statusData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="status" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                   <Tooltip />
-                  <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} name="Count" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           )}
+
           {data?.average_duration_days != null && (
             <div className="bg-white rounded-xl border border-gray-200 p-4">
               <p className="text-xs text-gray-500">Average Booking Duration</p>
@@ -153,11 +299,12 @@ function FinancialTab() {
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [granularity, setGranularity] = useState('month');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
+      const params = { granularity };
       if (startDate) params.start_date = startDate;
       if (endDate) params.end_date = endDate;
       const res = await reportsApi.financial(params);
@@ -167,44 +314,75 @@ function FinancialTab() {
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, granularity]);
 
   useEffect(() => { load(); }, [load]);
 
   const fmtKes = (n) => `KES ${parseFloat(n || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
-  const monthlyData = data?.monthly_revenue ?? [];
+
+  // by_period: [{"period": "2026-01", "revenue": "45000.00", "payment_count": 8}, ...]
+  const periodData = (data?.by_period ?? []).map((d) => ({
+    label: d.period,
+    revenue: parseFloat(d.revenue ?? 0),
+    payments: d.payment_count ?? 0,
+  }));
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h3 className="text-sm font-semibold text-gray-900">Financial Report</h3>
-        <DateRangeFilter
-          startDate={startDate}
-          endDate={endDate}
-          onChangeDates={(s, e) => { setStartDate(s); setEndDate(e); }}
-        />
+        <div className="flex items-center gap-3 flex-wrap">
+          <GranularityPicker value={granularity} onChange={setGranularity} />
+          <DateRangeFilter
+            startDate={startDate}
+            endDate={endDate}
+            onChangeDates={(s, e) => { setStartDate(s); setEndDate(e); }}
+          />
+        </div>
       </div>
       {loading ? (
-        <div className="h-60 bg-gray-100 rounded-xl animate-pulse" />
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-4 animate-pulse">
+            {[...Array(3)].map((_, i) => <div key={i} className="h-20 bg-gray-100 rounded-xl" />)}
+          </div>
+          <div className="h-60 bg-gray-100 rounded-xl animate-pulse" />
+        </div>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <KpiCard label="Total Revenue" value={fmtKes(data?.total_revenue)} color="teal" />
             <KpiCard label="Total Payments" value={data?.payment_count} color="blue" />
-            <KpiCard label="Outstanding" value={fmtKes(data?.outstanding_damage_cost)} color="amber" />
+            <KpiCard label="Outstanding Damages" value={fmtKes(data?.outstanding_damage_cost)} color="amber" />
           </div>
-          {monthlyData.length > 0 && (
+
+          {/* Revenue + payment count over time (composed) */}
+          {periodData.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <p className="text-xs font-semibold text-gray-700 mb-4">Monthly Revenue (KES)</p>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={monthlyData}>
+              <p className="text-xs font-semibold text-gray-700 mb-4 capitalize">
+                Revenue &amp; Payments Over Time ({granularity}ly)
+              </p>
+              <ResponsiveContainer width="100%" height={280}>
+                <ComposedChart data={periodData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v) => `KES ${parseFloat(v).toLocaleString()}`} />
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                  <YAxis
+                    yAxisId="rev"
+                    orientation="left"
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
+                  />
+                  <YAxis yAxisId="cnt" orientation="right" tick={{ fontSize: 10 }} allowDecimals={false} />
+                  <Tooltip
+                    formatter={(value, name) =>
+                      name === 'Revenue (KES)'
+                        ? `KES ${parseFloat(value).toLocaleString('en-KE')}`
+                        : value
+                    }
+                  />
                   <Legend />
-                  <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} />
-                </LineChart>
+                  <Bar yAxisId="rev" dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} name="Revenue (KES)" />
+                  <Line yAxisId="cnt" type="monotone" dataKey="payments" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} name="Payments" />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           )}
@@ -213,7 +391,6 @@ function FinancialTab() {
     </div>
   );
 }
-
 // ── Equipment Tab ──
 function EquipmentTab() {
   const [data, setData] = useState([]);
@@ -334,6 +511,12 @@ function ClientsTab() {
     value: item.total_bookings ?? item.booking_count ?? 0,
   }));
 
+  const barData = data.slice(0, 10).map((item) => ({
+    name: item.school_name?.substring(0, 18) + (item.school_name?.length > 18 ? '…' : ''),
+    bookings: item.total_bookings ?? item.booking_count ?? 0,
+    spend: parseFloat(item.total_spend ?? 0),
+  }));
+
   return (
     <div className="space-y-5">
       <h3 className="text-sm font-semibold text-gray-900">School Activity Report</h3>
@@ -341,16 +524,38 @@ function ClientsTab() {
         <div className="h-60 bg-gray-100 rounded-xl animate-pulse" />
       ) : (
         <>
-          {pieData.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center justify-center">
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name }) => name}>
-                    {pieData.map((_, idx) => <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+          {/* Top chart row */}
+          {(barData.length > 0 || pieData.length > 0) && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {barData.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <p className="text-xs font-semibold text-gray-700 mb-4">Top Schools by Bookings</p>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={barData} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
+                      <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={110} />
+                      <Tooltip />
+                      <Bar dataKey="bookings" fill="#3b82f6" radius={[0, 4, 4, 0]} name="Bookings" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              {pieData.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center justify-center">
+                  <div className="w-full">
+                    <p className="text-xs font-semibold text-gray-700 mb-4">Booking Share (Top 6)</p>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name }) => name}>
+                          {pieData.map((_, idx) => <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />)}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
