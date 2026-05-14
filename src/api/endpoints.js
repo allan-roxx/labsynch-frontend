@@ -139,6 +139,7 @@ export const reportsApi = {
   financial: (params) => client.get('/api/reports/financial/', { params }),
   equipment: () => client.get('/api/reports/equipment/'),
   clients: () => client.get('/api/reports/clients/'),
+  profitability: (params) => client.get('/api/reports/profitability/', { params }),
 };
 
 export const notificationsApi = {

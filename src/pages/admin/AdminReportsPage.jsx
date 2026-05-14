@@ -8,7 +8,7 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts';
 
-const TABS = ['Overview', 'Bookings', 'Financial', 'Equipment', 'Clients'];
+const TABS = ['Overview', 'Bookings', 'Financial', 'Profitability', 'Equipment', 'Clients'];
 
 const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -391,6 +391,309 @@ function FinancialTab() {
     </div>
   );
 }
+// ── Profitability Tab ──
+const REVENUE_BREAKDOWN_LABELS = {
+  rental:          'Rental',
+  personnel:       'Personnel',
+  transport:       'Transport',
+  penalties:       'Penalties',
+  damage_recovery: 'Damage Recovery',
+};
+const REVENUE_BREAKDOWN_COLORS = ['#3b82f6', '#f59e0b', '#06b6d4', '#ef4444', '#10b981'];
+
+function ProfitabilityTab() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [granularity, setGranularity] = useState('month');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const params = { granularity };
+      if (startDate) params.start_date = startDate;
+      if (endDate) params.end_date = endDate;
+      const res = await reportsApi.profitability(params);
+      setData(res?.data ?? res);
+    } catch (err) {
+      setError(err?.message || 'Failed to load profitability data.');
+    } finally {
+      setLoading(false);
+    }
+  }, [startDate, endDate, granularity]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const fmtKes = (n) => `KES ${parseFloat(n || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
+  const fmtPct = (n) => n != null ? `${parseFloat(n).toFixed(1)}%` : '—';
+
+  // Revenue breakdown → pie slices
+  const revBreakdown = data?.revenue_breakdown
+    ? Object.entries(data.revenue_breakdown)
+        .map(([key, val], i) => ({
+          name: REVENUE_BREAKDOWN_LABELS[key] ?? key,
+          value: parseFloat(val ?? 0),
+          color: REVENUE_BREAKDOWN_COLORS[i % REVENUE_BREAKDOWN_COLORS.length],
+        }))
+        .filter((s) => s.value > 0)
+    : [];
+
+  // Profitability trend for composed chart
+  const trend = (data?.profitability_trend ?? []).map((d) => ({
+    label: d.period,
+    gross_revenue: parseFloat(d.gross_revenue ?? 0),
+    repair_costs:  parseFloat(d.repair_costs ?? 0),
+    damage_recovery: parseFloat(d.damage_recovery ?? 0),
+    net_profit:    parseFloat(d.net_profit ?? 0),
+  }));
+
+  // Equipment ROI — sorted desc by roi_pct, null last
+  const roiData = [...(data?.equipment_roi ?? [])]
+    .sort((a, b) => {
+      if (a.roi_pct == null) return 1;
+      if (b.roi_pct == null) return -1;
+      return parseFloat(b.roi_pct) - parseFloat(a.roi_pct);
+    })
+    .slice(0, 12)
+    .map((item) => ({
+      name: (item.equipment_name ?? '').substring(0, 20) + ((item.equipment_name?.length ?? 0) > 20 ? '…' : ''),
+      roi:  item.roi_pct != null ? parseFloat(item.roi_pct) : null,
+      revenue: parseFloat(item.total_revenue_generated ?? 0),
+      acq:  parseFloat(item.acquisition_cost ?? 0),
+    }));
+
+  const dmg = data?.damage_analysis;
+  const assessed  = parseFloat(dmg?.total_repair_cost_assessed ?? 0);
+  const recovered = parseFloat(dmg?.total_recovered_from_schools ?? 0);
+  const unrecovered = parseFloat(dmg?.net_unrecovered_repair_cost ?? 0);
+  const outstanding = parseFloat(dmg?.all_time_outstanding_liability ?? 0);
+
+  return (
+    <div className="space-y-6">
+      {/* Header + filters */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h3 className="text-sm font-semibold text-gray-900">Profitability &amp; Business Intelligence</h3>
+        <div className="flex items-center gap-3 flex-wrap">
+          <GranularityPicker value={granularity} onChange={setGranularity} />
+          <DateRangeFilter
+            startDate={startDate}
+            endDate={endDate}
+            onChangeDates={(s, e) => { setStartDate(s); setEndDate(e); }}
+          />
+        </div>
+      </div>
+
+      {error && (
+        <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">{error}</div>
+      )}
+
+      {loading ? (
+        <div className="space-y-4 animate-pulse">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-gray-100 rounded-xl" />)}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="h-72 bg-gray-100 rounded-xl" />
+            <div className="h-72 bg-gray-100 rounded-xl" />
+          </div>
+          <div className="h-72 bg-gray-100 rounded-xl" />
+        </div>
+      ) : (
+        <>
+          {/* ── P&L Summary cards ─────────────────────────────────────── */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <KpiCard label="Gross Revenue" value={fmtKes(data?.summary?.gross_revenue)} color="green" />
+            <KpiCard label="Net Profit" value={fmtKes(data?.summary?.net_profit)} color="teal" />
+            <KpiCard
+              label="Profit Margin"
+              value={fmtPct(data?.summary?.profit_margin_pct)}
+              color="blue"
+            />
+            <KpiCard label="Repair Costs" value={fmtKes(data?.summary?.total_repair_costs)} color="red" />
+          </div>
+
+          {/* Second row */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <KpiCard label="Payments Received" value={fmtKes(data?.summary?.total_payments_received)} color="blue" />
+            <KpiCard label="Damage Recovery" value={fmtKes(data?.summary?.damage_recovery)} color="amber" />
+            <div className="bg-white rounded-xl border border-gray-200 border-l-4 border-l-teal-500 p-4">
+              <p className="text-2xl font-bold text-gray-900">
+                {data?.fleet_overview?.total_active_equipment ?? '—'}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Fleet value: {fmtKes(data?.fleet_overview?.total_fleet_acquisition_value)}
+              </p>
+              <p className="text-xs text-gray-500 mt-2">Active Equipment</p>
+            </div>
+          </div>
+
+          {/* ── Revenue sources + P&L trend ──────────────────────────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Donut */}
+            {revBreakdown.length > 0 && (
+              <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <p className="text-xs font-semibold text-gray-700 mb-4">Revenue Sources</p>
+                <div className="flex items-center gap-4">
+                  <ResponsiveContainer width="60%" height={220}>
+                    <PieChart>
+                      <Pie
+                        data={revBreakdown}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={95}
+                      >
+                        {revBreakdown.map((entry, idx) => (
+                          <Cell key={idx} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v) => `KES ${parseFloat(v).toLocaleString('en-KE')}`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="space-y-2 flex-1">
+                    {revBreakdown.map((entry) => (
+                      <div key={entry.name} className="flex items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+                          <span className="text-gray-600">{entry.name}</span>
+                        </div>
+                        <span className="font-medium text-gray-800">
+                          KES {entry.value.toLocaleString('en-KE', { maximumFractionDigits: 0 })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Damage gap */}
+            {dmg && (
+              <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <p className="text-xs font-semibold text-gray-700 mb-4">Damage Cost Analysis</p>
+                <div className="space-y-4 text-sm">
+                  {/* Assessed vs recovered progress bar */}
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Recovery rate</span>
+                      <span>{assessed > 0 ? ((recovered / assessed) * 100).toFixed(1) : 0}%</span>
+                    </div>
+                    <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-green-500 transition-all"
+                        style={{ width: assessed > 0 ? `${Math.min((recovered / assessed) * 100, 100)}%` : '0%' }}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Total repair cost assessed</span>
+                      <span className="font-medium text-gray-900">{fmtKes(assessed)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Recovered from schools</span>
+                      <span className="font-medium text-green-700">{fmtKes(recovered)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Net unrecovered</span>
+                      <span className="font-medium text-red-600">{fmtKes(unrecovered)}</span>
+                    </div>
+                    <div className="flex justify-between border-t border-gray-100 pt-2">
+                      <span className="text-gray-500">All-time outstanding liability</span>
+                      <span className="font-semibold text-red-700">{fmtKes(outstanding)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── P&L Trend: Composed chart ─────────────────────────────── */}
+          {trend.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <p className="text-xs font-semibold text-gray-700 mb-4 capitalize">
+                Profitability Trend ({granularity}ly)
+              </p>
+              <ResponsiveContainer width="100%" height={300}>
+                <ComposedChart data={trend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                  <YAxis
+                    yAxisId="main"
+                    orientation="left"
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
+                  />
+                  <Tooltip
+                    formatter={(value) => `KES ${parseFloat(value).toLocaleString('en-KE')}`}
+                  />
+                  <Legend />
+                  <Bar yAxisId="main" dataKey="gross_revenue" fill="#4ade80" name="Gross Revenue" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="main" dataKey="repair_costs" fill="#f87171" name="Repair Costs" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="main" dataKey="damage_recovery" fill="#fbbf24" name="Damage Recovery" radius={[4, 4, 0, 0]} />
+                  <Line yAxisId="main" type="monotone" dataKey="net_profit" stroke="#60a5fa" strokeWidth={2.5} dot={false} name="Net Profit" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* ── Equipment ROI ─────────────────────────────────────────── */}
+          {roiData.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <p className="text-xs font-semibold text-gray-700 mb-4">Equipment ROI (Top 12 by ROI %)</p>
+              <ResponsiveContainer width="100%" height={Math.max(240, roiData.length * 32)}>
+                <BarChart data={roiData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    type="number"
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => `${v}%`}
+                  />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={130} />
+                  <Tooltip
+                    formatter={(value, name) =>
+                      name === 'ROI %' ? `${parseFloat(value).toFixed(1)}%` : `KES ${parseFloat(value).toLocaleString('en-KE')}`
+                    }
+                  />
+                  <Bar
+                    dataKey="roi"
+                    name="ROI %"
+                    radius={[0, 4, 4, 0]}
+                    isAnimationActive
+                  >
+                    {roiData.map((entry, idx) => (
+                      <Cell
+                        key={idx}
+                        fill={
+                          entry.roi == null ? '#d1d5db'
+                          : entry.roi < 0   ? '#ef4444'
+                          : entry.roi < 100 ? '#f59e0b'
+                                            : '#10b981'
+                        }
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-green-500" /> ROI ≥ 100%</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400" /> ROI 0–100%</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-500" /> Negative ROI</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-gray-300" /> No cost data</span>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Equipment Tab ──
 function EquipmentTab() {
   const [data, setData] = useState([]);
@@ -646,6 +949,7 @@ export default function AdminReportsPage() {
       {activeTab === 'Overview' && <OverviewTab metrics={dashboardMetrics} />}
       {activeTab === 'Bookings' && <BookingsTab />}
       {activeTab === 'Financial' && <FinancialTab />}
+      {activeTab === 'Profitability' && <ProfitabilityTab />}
       {activeTab === 'Equipment' && <EquipmentTab />}
       {activeTab === 'Clients' && <ClientsTab />}
     </div>
