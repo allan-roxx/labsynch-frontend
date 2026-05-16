@@ -31,6 +31,7 @@ export default function RegisterPage() {
   const [bannerError, setBannerError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [devVerifyUrl, setDevVerifyUrl] = useState('');
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -72,6 +73,11 @@ export default function RegisterPage() {
       };
       const regRes = await authApi.register(registrationPayload);
       const regData = regRes?.data ?? regRes;
+
+      // Capture the dev verification URL when the backend returns one (DEBUG mode only)
+      if (regData?.dev_verification_url) {
+        setDevVerifyUrl(regData.dev_verification_url);
+      }
 
       // Step 2 — If the user provided extra profile details, persist them.
       // We need a token to call the profile endpoint, so we log in silently first.
@@ -132,6 +138,22 @@ export default function RegisterPage() {
           <p className="mt-2 text-sm text-gray-500">
             Check your email inbox to verify your address before logging in.
           </p>
+          {devVerifyUrl && (
+            <div className="mt-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-left">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-yellow-300 text-yellow-900 rounded px-1.5 py-0.5">
+                  Development
+                </span>
+                <span className="text-xs text-yellow-700">Email sending skipped — verify directly:</span>
+              </div>
+              <a
+                href={devVerifyUrl}
+                className="text-xs text-blue-600 break-all hover:underline font-mono"
+              >
+                {devVerifyUrl}
+              </a>
+            </div>
+          )}
           <Button className="mt-6 w-full" onClick={() => navigate('/login')}>
             Go to Login
           </Button>

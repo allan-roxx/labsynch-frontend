@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { auditLogsApi } from '../../api/endpoints';
+import { auditLogsApi, downloadPdf } from '../../api/endpoints';
 
 const ALL_ACTIONS = [
   'ALL', 'CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT',
@@ -64,16 +64,21 @@ export default function AdminAuditLogsPage() {
   const [actionFilter, setActionFilter] = useState('ALL');
   const [search, setSearch]           = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [dateFrom, setDateFrom]       = useState('');
+  const [dateTo, setDateTo]           = useState('');
   const [page, setPage]               = useState(1);
   const [pagination, setPagination]   = useState({ count: 0, next: null, previous: null });
   const [detailLog, setDetailLog]     = useState(null);
+  const [exporting, setExporting]     = useState(false);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, page_size: 20, ordering: '-created_at' };
-      if (search)              params.search = search;
+      if (search)                params.search = search;
       if (actionFilter !== 'ALL') params.action = actionFilter;
+      if (dateFrom)              params['created_at__gte'] = dateFrom;
+      if (dateTo)                params['created_at__lte'] = dateTo;
       const res     = await auditLogsApi.list(params);
       const payload = res?.data ?? res;
       const results = payload?.results || (Array.isArray(payload) ? payload : []);
@@ -84,34 +89,105 @@ export default function AdminAuditLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, actionFilter]);
+  }, [page, search, actionFilter, dateFrom, dateTo]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
   const handleSearch = (e) => { e.preventDefault(); setSearch(searchInput); setPage(1); };
 
+  const buildExportParams = () => {
+    const params = { ordering: '-created_at' };
+    if (search)                params.search = search;
+    if (actionFilter !== 'ALL') params.action = actionFilter;
+    if (dateFrom)              params['created_at__gte'] = dateFrom;
+    if (dateTo)                params['created_at__lte'] = dateTo;
+    return params;
+  };
+
+  const handleExport = async (fmt) => {
+    setExporting(true);
+    try {
+      const res = await auditLogsApi.export({ ...buildExportParams(), fmt });
+      downloadPdf(res, `audit_logs.${fmt}`);
+    } catch (err) {
+      console.error('Export failed:', err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div>
       {/* Header */}
-      <div className="mb-5">
-        <h1 className="text-2xl font-bold text-gray-900">Audit Logs</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Immutable record of all significant system actions.</p>
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Audit Logs</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Immutable record of all significant system actions.</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleExport('csv')}
+            disabled={exporting}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            <svg className="h-3.5 w-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export CSV
+          </button>
+          <button
+            onClick={() => handleExport('pdf')}
+            disabled={exporting}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            <svg className="h-3.5 w-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            Export PDF
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col gap-3 mb-5">
-        <form onSubmit={handleSearch} className="flex gap-2">
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search actor, model, or object…"
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-72"
-          />
-          <button type="submit" className="px-3 py-2 border border-gray-300 text-sm rounded-lg hover:bg-gray-50">
-            Search
-          </button>
-        </form>
+        <div className="flex flex-wrap gap-2 items-center">
+          <form onSubmit={handleSearch} className="flex gap-2">
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search actor, model, or object…"
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+            />
+            <button type="submit" className="px-3 py-2 border border-gray-300 text-sm rounded-lg hover:bg-gray-50">
+              Search
+            </button>
+          </form>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400">From:</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+              className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-xs text-gray-400">To:</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+              className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={() => { setDateFrom(''); setDateTo(''); setPage(1); }}
+                className="text-xs text-gray-400 hover:text-gray-700"
+              >
+                ✕ Clear dates
+              </button>
+            )}
+          </div>
+        </div>
         <div className="flex gap-1.5 flex-wrap items-center">
           <span className="text-xs text-gray-400 mr-1">Action:</span>
           {ALL_ACTIONS.map((a) => (

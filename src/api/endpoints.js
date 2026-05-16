@@ -123,6 +123,7 @@ export const pricingRulesApi = {
 export const auditLogsApi = {
   list: (params) => client.get('/api/audit-logs/', { params }),
   retrieve: (id) => client.get(`/api/audit-logs/${id}/`),
+  export: (params) => client.get('/api/audit-logs/export/', { params, responseType: 'blob' }),
 };
 
 export const transportZonesApi = {
