@@ -7,6 +7,7 @@ export default function VerifyEmailPage() {
   const [params] = useSearchParams();
   const uid = params.get('uid') ?? '';
   const token = params.get('token') ?? '';
+  const fallbackVerifyUrl = localStorage.getItem('latest_verification_url') ?? '';
 
   const [status, setStatus] = useState('loading'); // 'loading' | 'success' | 'error'
   const [message, setMessage] = useState('');
@@ -35,7 +36,23 @@ export default function VerifyEmailPage() {
             <p className="mt-2 text-sm text-gray-500">{message}</p>
           </>
         ) : (
-          <Alert type="error">{message}</Alert>
+          <>
+            <Alert type="error">{message}</Alert>
+            {fallbackVerifyUrl && (
+              <div className="mt-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-left">
+                <p className="text-xs font-medium text-yellow-800 mb-1">No SMTP Mode</p>
+                <p className="text-xs text-yellow-700 mb-2">
+                  Use your latest direct verification link:
+                </p>
+                <a
+                  href={fallbackVerifyUrl}
+                  className="text-xs text-blue-600 break-all hover:underline font-mono"
+                >
+                  {fallbackVerifyUrl}
+                </a>
+              </div>
+            )}
+          </>
         )}
         <Link to="/login" className="mt-6 inline-block text-sm font-medium text-blue-600 hover:underline">
           Go to Login →

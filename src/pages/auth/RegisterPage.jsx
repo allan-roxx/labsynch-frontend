@@ -74,9 +74,10 @@ export default function RegisterPage() {
       const regRes = await authApi.register(registrationPayload);
       const regData = regRes?.data ?? regRes;
 
-      // Capture the dev verification URL when the backend returns one (DEBUG mode only)
+      // Capture the direct verification URL when the backend returns one.
       if (regData?.dev_verification_url) {
         setDevVerifyUrl(regData.dev_verification_url);
+        localStorage.setItem('latest_verification_url', regData.dev_verification_url);
       }
 
       // Step 2 — If the user provided extra profile details, persist them.
@@ -142,9 +143,9 @@ export default function RegisterPage() {
             <div className="mt-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-left">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider bg-yellow-300 text-yellow-900 rounded px-1.5 py-0.5">
-                  Development
+                  No SMTP Mode
                 </span>
-                <span className="text-xs text-yellow-700">Email sending skipped — verify directly:</span>
+                <span className="text-xs text-yellow-700">Verify directly using this link:</span>
               </div>
               <a
                 href={devVerifyUrl}
