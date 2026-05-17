@@ -42,6 +42,15 @@ export const equipmentApi = {
   update: (id, data) => client.patch(`/api/equipment/${id}/`, data),
   delete: (id) => client.delete(`/api/equipment/${id}/`),
   checkAvailability: (id, data) => client.post(`/api/equipment/${id}/availability/`, data),
+  addStock: (id, data) => client.post(`/api/equipment/${id}/add_stock/`, data),
+  uploadImage: (id, formData) =>
+    client.post(`/api/equipment/${id}/upload_image/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  updateImage: (id, imageId, formData) =>
+    client.patch(`/api/equipment/${id}/images/${imageId}/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
 };
 
 export const cartApi = {

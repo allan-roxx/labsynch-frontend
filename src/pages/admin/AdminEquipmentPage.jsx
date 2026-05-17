@@ -218,6 +218,281 @@ function EquipmentModal({ editTarget, categories, onClose, onSaved }) {
   );
 }
 
+function StockAppendModal({ equipmentOptions, onClose, onSaved }) {
+  const [equipmentId, setEquipmentId] = useState(equipmentOptions?.[0]?.id ?? '');
+  const [additionalQuantity, setAdditionalQuantity] = useState(1);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!equipmentId) {
+      setError('Please select equipment.');
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+    try {
+      await equipmentApi.addStock(equipmentId, { additional_quantity: Number(additionalQuantity) });
+      onSaved();
+    } catch (err) {
+      setError(err?.message || 'Failed to append stock.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-900">Append Inventory Stock</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
+        </div>
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          {error && (
+            <div className="px-3 py-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>
+          )}
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Equipment</label>
+            <select
+              value={equipmentId}
+              onChange={(e) => setEquipmentId(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">Select equipment…</option>
+              {equipmentOptions.map((eq) => (
+                <option key={eq.id} value={eq.id}>
+                  {eq.equipment_name} ({eq.equipment_code})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Quantity To Add</label>
+            <input
+              type="number"
+              min={1}
+              value={additionalQuantity}
+              onChange={(e) => setAdditionalQuantity(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+
+          <div className="flex gap-3 pt-1">
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {saving ? 'Updating…' : 'Append Stock'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EquipmentImagesModal({ equipment, onClose, onSaved }) {
+  const [images, setImages] = useState(equipment.images || []);
+  const [newImageFile, setNewImageFile] = useState(null);
+  const [newIsPrimary, setNewIsPrimary] = useState(images.length === 0);
+  const [newDisplayOrder, setNewDisplayOrder] = useState(images.length);
+  const [replaceFiles, setReplaceFiles] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const refreshImages = async () => {
+    const res = await equipmentApi.retrieve(equipment.id);
+    const payload = res?.data ?? res;
+    const latest = payload?.images || [];
+    setImages(latest);
+    onSaved();
+  };
+
+  const handleUploadNew = async (e) => {
+    e.preventDefault();
+    if (!newImageFile) {
+      setError('Please choose an image to upload.');
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+    try {
+      const formData = new FormData();
+      formData.append('image', newImageFile);
+      formData.append('is_primary', newIsPrimary ? 'true' : 'false');
+      formData.append('display_order', String(newDisplayOrder || 0));
+      await equipmentApi.uploadImage(equipment.id, formData);
+
+      setNewImageFile(null);
+      setNewIsPrimary(false);
+      await refreshImages();
+    } catch (err) {
+      setError(err?.message || 'Failed to upload image.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReplace = async (imageId) => {
+    const file = replaceFiles[imageId];
+    if (!file) {
+      setError('Choose a replacement file first.');
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      await equipmentApi.updateImage(equipment.id, imageId, formData);
+      setReplaceFiles((prev) => ({ ...prev, [imageId]: null }));
+      await refreshImages();
+    } catch (err) {
+      setError(err?.message || 'Failed to replace image.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSetPrimary = async (imageId) => {
+    setSaving(true);
+    setError('');
+    try {
+      const formData = new FormData();
+      formData.append('is_primary', 'true');
+      await equipmentApi.updateImage(equipment.id, imageId, formData);
+      await refreshImages();
+    } catch (err) {
+      setError(err?.message || 'Failed to update image.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-900">Manage Images: {equipment.equipment_name}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+          {error && (
+            <div className="px-3 py-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>
+          )}
+
+          <form onSubmit={handleUploadNew} className="p-4 border border-gray-200 rounded-xl space-y-3">
+            <h3 className="text-sm font-semibold text-gray-800">Upload New Image</h3>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setNewImageFile(e.target.files?.[0] || null)}
+              className="block w-full text-sm"
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={newIsPrimary}
+                  onChange={(e) => setNewIsPrimary(e.target.checked)}
+                  className="rounded"
+                />
+                Set as primary image
+              </label>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Display Order</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={newDisplayOrder}
+                  onChange={(e) => setNewDisplayOrder(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {saving ? 'Uploading…' : 'Upload Image'}
+            </button>
+          </form>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {images.length === 0 ? (
+              <p className="text-sm text-gray-500">No images uploaded yet.</p>
+            ) : (
+              images.map((img) => (
+                <div key={img.id} className="border border-gray-200 rounded-xl p-3 space-y-3">
+                  <img
+                    src={img.image_url}
+                    alt={equipment.equipment_name}
+                    className="w-full h-40 object-cover rounded-lg bg-gray-100"
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-500">Order: {img.display_order}</span>
+                    {img.is_primary ? (
+                      <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">Primary</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleSetPrimary(img.id)}
+                        className="px-2 py-1 border border-blue-200 text-blue-600 rounded hover:bg-blue-50"
+                      >
+                        Set Primary
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) =>
+                        setReplaceFiles((prev) => ({
+                          ...prev,
+                          [img.id]: e.target.files?.[0] || null,
+                        }))
+                      }
+                      className="block w-full text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleReplace(img.id)}
+                      disabled={saving}
+                      className="px-3 py-1.5 text-xs border border-gray-300 text-gray-700 rounded hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Replace Image
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminEquipmentPage() {
   const [equipment, setEquipment] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -231,6 +506,9 @@ export default function AdminEquipmentPage() {
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [imageTarget, setImageTarget] = useState(null);
 
   const fetchEquipment = useCallback(async () => {
     setLoading(true);
@@ -277,7 +555,13 @@ export default function AdminEquipmentPage() {
   const handleSaved = () => {
     setShowModal(false);
     setEditTarget(null);
+    setShowStockModal(false);
     fetchEquipment();
+  };
+
+  const handleImageModalOpen = (eq) => {
+    setImageTarget(eq);
+    setShowImageModal(true);
   };
 
   return (
@@ -300,6 +584,12 @@ export default function AdminEquipmentPage() {
             }}
             filename="equipment"
           />
+          <button
+            onClick={() => setShowStockModal(true)}
+            className="px-4 py-2 border border-blue-200 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-50 transition-colors"
+          >
+            + Append Stock
+          </button>
           <button
             onClick={() => { setEditTarget(null); setShowModal(true); }}
             className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
@@ -423,6 +713,12 @@ export default function AdminEquipmentPage() {
                           Edit
                         </button>
                         <button
+                          onClick={() => handleImageModalOpen(eq)}
+                          className="px-2.5 py-1 text-xs border border-blue-200 text-blue-600 rounded hover:bg-blue-50"
+                        >
+                          Images
+                        </button>
+                        <button
                           onClick={() => handleDelete(eq)}
                           disabled={deletingId === eq.id}
                           className="px-2.5 py-1 text-xs border border-red-200 text-red-600 rounded hover:bg-red-50 disabled:opacity-50"
@@ -458,6 +754,25 @@ export default function AdminEquipmentPage() {
           categories={categories}
           onClose={() => { setShowModal(false); setEditTarget(null); }}
           onSaved={handleSaved}
+        />
+      )}
+
+      {showStockModal && (
+        <StockAppendModal
+          equipmentOptions={equipment}
+          onClose={() => setShowStockModal(false)}
+          onSaved={handleSaved}
+        />
+      )}
+
+      {showImageModal && imageTarget && (
+        <EquipmentImagesModal
+          equipment={imageTarget}
+          onClose={() => {
+            setShowImageModal(false);
+            setImageTarget(null);
+          }}
+          onSaved={fetchEquipment}
         />
       )}
     </div>
