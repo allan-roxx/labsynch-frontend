@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   bookingsApi,
   issuancesApi,
   returnsApi,
-  usersApi,
   downloadPdf,
 } from '../../api/endpoints';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -171,160 +170,22 @@ function ProgressStepper({ status }) {
   );
 }
 
-// ── UserSearchInput — live search combobox for school users ───────────────────
-/**
- * Props:
- *   label       — field label text
- *   value       — currently selected user { id, full_name, email } | null
- *   onChange    — called with selected user object (or null on clear)
- *   initialSearch — optional search string to pre-populate (e.g. school_name)
- */
-function UserSearchInput({ label, value, onChange, initialSearch = '' }) {
-  const [query, setQuery]       = useState(value ? `${value.full_name} (${value.email})` : initialSearch);
-  const [results, setResults]   = useState([]);
-  const [open, setOpen]         = useState(false);
-  const [searching, setSearching] = useState(false);
-  const debounceRef             = useRef(null);
-  const wrapperRef              = useRef(null);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handler = (e) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  // Run initial search to pre-populate with school's users
-  useEffect(() => {
-    if (initialSearch && !value) doSearch(initialSearch);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const doSearch = async (q) => {
-    if (!q || q.trim().length < 2) { setResults([]); setOpen(false); return; }
-    setSearching(true);
-    try {
-      const res = await usersApi.list({ search: q, user_type: 'SCHOOL', page_size: 8 });
-      const d = res?.data ?? res;
-      const list = d?.results ?? (Array.isArray(d) ? d : []);
-      setResults(list);
-      setOpen(list.length > 0);
-    } catch {
-      setResults([]);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const handleInputChange = (e) => {
-    const q = e.target.value;
-    setQuery(q);
-    if (value) onChange(null); // clear selection when typing again
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => doSearch(q), 300);
-  };
-
-  const handleSelect = (user) => {
-    setQuery(`${user.full_name} (${user.email})`);
-    onChange(user);
-    setOpen(false);
-    setResults([]);
-  };
-
-  const handleClear = () => {
-    setQuery('');
-    onChange(null);
-    setResults([]);
-    setOpen(false);
-  };
-
-  return (
-    <div ref={wrapperRef} className="relative">
-      <label className="block text-xs font-medium text-gray-600 mb-1">
-        {label} <span className="text-red-500">*</span>
-      </label>
-      <div className="relative flex items-center">
-        <input
-          type="text"
-          value={query}
-          onChange={handleInputChange}
-          onFocus={() => { if (results.length) setOpen(true); }}
-          placeholder="Search by name or email…"
-          autoComplete="off"
-          className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 pr-8 ${
-            value
-              ? 'border-green-400 ring-1 ring-green-300 bg-green-50'
-              : 'border-gray-300 focus:ring-blue-500'
-          }`}
-        />
-        {/* State icon */}
-        <span className="absolute right-2 text-gray-400 pointer-events-none">
-          {searching ? (
-            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 100 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z" />
-            </svg>
-          ) : value ? (
-            <button type="button" onClick={handleClear} className="text-green-500 hover:text-red-500 pointer-events-auto">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          ) : (
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" />
-            </svg>
-          )}
-        </span>
-      </div>
-
-      {/* Selected chip */}
-      {value && (
-        <p className="mt-1 text-xs text-green-700 font-medium">
-          Selected: {value.full_name} · {value.email}
-        </p>
-      )}
-
-      {/* Dropdown */}
-      {open && results.length > 0 && (
-        <ul className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
-          {results.map((user) => (
-            <li key={user.id}>
-              <button
-                type="button"
-                onClick={() => handleSelect(user)}
-                className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition-colors"
-              >
-                <p className="text-sm font-medium text-gray-900">{user.full_name}</p>
-                <p className="text-xs text-gray-500">{user.email}</p>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
 function IssuanceModal({ booking, onClose, onDone }) {
-  const [selectedUser, setSelectedUser] = useState(null);
   const [notes, setNotes]   = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr]       = useState('');
 
+  const recipientName = booking.school_user_name || booking.school_name || 'Booking school';
+  const recipientEmail = booking.school_user_email || '';
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedUser) { setErr('Please select a school user who will receive the equipment.'); return; }
     setSaving(true);
     setErr('');
     try {
       await issuancesApi.create({
         booking:     booking.id,
-        received_by: selectedUser.id,
+        received_by: booking.school_user_id,
         issue_notes: notes,
       });
       onDone();
@@ -351,12 +212,13 @@ function IssuanceModal({ booking, onClose, onDone }) {
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           {err && <div className="px-3 py-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{err}</div>}
 
-          <UserSearchInput
-            label="Received by (school user)"
-            value={selectedUser}
-            onChange={setSelectedUser}
-            initialSearch={booking.school_name ?? ''}
-          />
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Received by</label>
+            <div className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+              <div className="font-medium text-gray-900">{recipientName}</div>
+              {recipientEmail && <div className="text-xs text-gray-500">{recipientEmail}</div>}
+            </div>
+          </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Issue Notes (optional)</label>
@@ -370,7 +232,7 @@ function IssuanceModal({ booking, onClose, onDone }) {
           <div className="flex gap-3 pt-1">
             <button
               type="submit"
-              disabled={saving || !selectedUser}
+              disabled={saving || !booking.school_user_id}
               className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
               {saving ? 'Issuing…' : 'Confirm Issuance'}
@@ -460,21 +322,22 @@ function ConfirmDeliveryModal({ booking, onClose, onDone }) {
 
 // ── Return Modal ──────────────────────────────────────────────────────────────
 function ReturnModal({ booking, onClose, onDone }) {
-  const [selectedUser, setSelectedUser] = useState(null);
   const [notes, setNotes]     = useState('');
   const [hasDamage, setHasDamage] = useState(false);
   const [saving, setSaving]   = useState(false);
   const [err, setErr]         = useState('');
 
+  const returnerName = booking.school_user_name || booking.school_name || 'Booking school';
+  const returnerEmail = booking.school_user_email || '';
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedUser) { setErr('Please select the school user who is returning the equipment.'); return; }
     setSaving(true);
     setErr('');
     try {
       await returnsApi.create({
         booking:      booking.id,
-        returned_by:  selectedUser.id,
+        returned_by:  booking.school_user_id,
         return_notes: notes,
         has_damage:   hasDamage,
       });
@@ -502,12 +365,13 @@ function ReturnModal({ booking, onClose, onDone }) {
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           {err && <div className="px-3 py-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{err}</div>}
 
-          <UserSearchInput
-            label="Returned by (school user)"
-            value={selectedUser}
-            onChange={setSelectedUser}
-            initialSearch={booking.school_name ?? ''}
-          />
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Returned by</label>
+            <div className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+              <div className="font-medium text-gray-900">{returnerName}</div>
+              {returnerEmail && <div className="text-xs text-gray-500">{returnerEmail}</div>}
+            </div>
+          </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Return Notes (optional)</label>
@@ -530,7 +394,7 @@ function ReturnModal({ booking, onClose, onDone }) {
           <div className="flex gap-3 pt-1">
             <button
               type="submit"
-              disabled={saving || !selectedUser}
+              disabled={saving || !booking.school_user_id}
               className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
               {saving ? 'Recording…' : 'Confirm Return'}
