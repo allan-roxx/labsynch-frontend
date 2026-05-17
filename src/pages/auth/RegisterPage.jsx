@@ -23,6 +23,24 @@ const PROFILE_FIELDS = {
   physical_address: '',
 };
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const FULL_NAME_REGEX = /^[A-Za-z][A-Za-z\s'.-]{1,98}[A-Za-z.]$/;
+const SCHOOL_NAME_REGEX = /^[A-Za-z0-9][A-Za-z0-9\s&'().,/:-]{1,118}[A-Za-z0-9)]$/;
+const REG_NO_REGEX = /^[A-Za-z0-9][A-Za-z0-9/-]{2,49}$/;
+const PERSON_NAME_REGEX = /^[A-Za-z][A-Za-z\s'.-]{1,78}[A-Za-z.]$/;
+const DESIGNATION_REGEX = /^[A-Za-z][A-Za-z\s&'().,/:-]{1,78}$/;
+const COUNTY_REGEX = /^[A-Za-z][A-Za-z\s'.-]{1,58}$/;
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+
+function normalizePhoneNumber(value) {
+  return (value || '').replace(/[\s()-]/g, '');
+}
+
+function isValidKenyaPhone(value) {
+  const phone = normalizePhoneNumber(value);
+  return /^(\+2547\d{8}|2547\d{8}|07\d{8})$/.test(phone);
+}
+
 export default function RegisterPage() {
   const navigate = useNavigate();
 
@@ -40,14 +58,63 @@ export default function RegisterPage() {
 
   const validate = () => {
     const errors = {};
-    if (!form.email)       errors.email       = 'Email is required.';
-    if (!form.full_name)   errors.full_name   = 'Full name is required.';
-    if (!form.password)    errors.password    = 'Password is required.';
-    else if (form.password.length < 8)
-      errors.password = 'Password must be at least 8 characters.';
+    const email = form.email.trim();
+    const fullName = form.full_name.trim();
+    const schoolName = form.school_name.trim();
+    const regNo = form.registration_number.trim();
+    const contactPerson = form.contact_person.trim();
+    const contactDesignation = form.contact_designation.trim();
+    const county = form.county.trim();
+
+    if (!email) {
+      errors.email = 'Email is required.';
+    } else if (!EMAIL_REGEX.test(email)) {
+      errors.email = 'Enter a valid email address.';
+    }
+
+    if (!fullName) {
+      errors.full_name = 'Full name is required.';
+    } else if (!FULL_NAME_REGEX.test(fullName)) {
+      errors.full_name = 'Enter a valid full name (letters, spaces, hyphen, apostrophe only).';
+    }
+
+    if (!form.phone_number.trim()) {
+      errors.phone_number = 'Phone number is required.';
+    } else if (!isValidKenyaPhone(form.phone_number)) {
+      errors.phone_number = 'Use a valid Kenyan phone number (e.g. +254712345678).';
+    }
+
+    if (!form.password) {
+      errors.password = 'Password is required.';
+    } else if (!STRONG_PASSWORD_REGEX.test(form.password)) {
+      errors.password = 'Password must include uppercase, lowercase, number, and symbol.';
+    }
+
     if (form.password !== form.confirm_password)
       errors.confirm_password = 'Passwords do not match.';
-    if (!form.school_name) errors.school_name = 'School name is required.';
+
+    if (!schoolName) {
+      errors.school_name = 'School name is required.';
+    } else if (!SCHOOL_NAME_REGEX.test(schoolName)) {
+      errors.school_name = 'Enter a valid school name.';
+    }
+
+    if (regNo && !REG_NO_REGEX.test(regNo)) {
+      errors.registration_number = 'Registration number can only include letters, numbers, / and -.';
+    }
+
+    if (contactPerson && !PERSON_NAME_REGEX.test(contactPerson)) {
+      errors.contact_person = 'Enter a valid contact person name.';
+    }
+
+    if (contactDesignation && !DESIGNATION_REGEX.test(contactDesignation)) {
+      errors.contact_designation = 'Enter a valid designation.';
+    }
+
+    if (county && !COUNTY_REGEX.test(county)) {
+      errors.county = 'Enter a valid county name.';
+    }
+
     if (!form.terms_accepted) errors.terms_accepted = 'You must accept the Terms and Conditions to create an account.';
     return errors;
   };
@@ -62,13 +129,13 @@ export default function RegisterPage() {
     try {
       // Step 1 — Create the account (only sends fields the endpoint accepts)
       const registrationPayload = {
-        email:               form.email,
+        email:               form.email.trim(),
         password:            form.password,
         confirm_password:    form.confirm_password,
-        full_name:           form.full_name,
-        phone_number:        form.phone_number,
-        school_name:         form.school_name,
-        registration_number: form.registration_number,
+        full_name:           form.full_name.trim(),
+        phone_number:        normalizePhoneNumber(form.phone_number),
+        school_name:         form.school_name.trim(),
+        registration_number: form.registration_number.trim(),
         terms_accepted:      true,
       };
       const regRes = await authApi.register(registrationPayload);
@@ -93,7 +160,7 @@ export default function RegisterPage() {
             localStorage.setItem('access_token', tokens.access);
             const profilePayload = {};
             Object.keys(PROFILE_FIELDS).forEach((k) => {
-              if (form[k]?.trim()) profilePayload[k] = form[k];
+              if (form[k]?.trim()) profilePayload[k] = form[k].trim();
             });
             await usersApi.updateMySchoolProfile(profilePayload);
             // Remove immediately — user hasn't verified email yet
@@ -198,7 +265,7 @@ export default function RegisterPage() {
                   value={form.phone_number} onChange={handleChange} error={fieldErrors.phone_number} />
                 <div /> {/* spacer */}
                 <Input id="password" name="password" type="password" label="Password"
-                  placeholder="Min. 8 characters" value={form.password} onChange={handleChange}
+                  placeholder="Upper, lower, number, symbol" value={form.password} onChange={handleChange}
                   error={fieldErrors.password} />
                 <Input id="confirm_password" name="confirm_password" type="password" label="Confirm password"
                   placeholder="Repeat password" value={form.confirm_password} onChange={handleChange}
@@ -242,11 +309,11 @@ export default function RegisterPage() {
                 <Input id="county" name="county" label="County"
                   placeholder="Nairobi" value={form.county} onChange={handleChange}
                   error={fieldErrors.county} />
-                <div className="sm:col-span-2">
+                {/* <div className="sm:col-span-2">
                   <Input id="physical_address" name="physical_address" label="Physical address"
                     placeholder="P.O Box 123, Nairobi" value={form.physical_address} onChange={handleChange}
                     error={fieldErrors.physical_address} />
-                </div>
+                </div> */}
               </div>
             </fieldset>
 
