@@ -7,6 +7,7 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [resetLink, setResetLink] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
@@ -14,8 +15,11 @@ export default function ForgotPasswordPage() {
     if (!email) { setError('Please enter your email address.'); return; }
     setLoading(true);
     setError('');
+    setResetLink('');
     try {
-      await authApi.requestPasswordReset(email);
+      const res = await authApi.requestPasswordReset(email);
+      const payload = res?.data ?? {};
+      setResetLink(payload?.dev_reset_url || '');
       setSent(true);
     } catch (err) {
       setError(err?.message ?? 'Failed to send reset email. Try again.');
@@ -34,9 +38,24 @@ export default function ForgotPasswordPage() {
           </p>
 
           {sent ? (
-            <Alert type="success">
-              If that email exists in our system, a reset link has been sent. Check your inbox.
-            </Alert>
+            <div className="space-y-3">
+              <Alert type="success">
+                If that email exists in our system, a reset link has been sent. Check your inbox.
+              </Alert>
+              {resetLink && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                  <p className="text-xs font-medium text-blue-900 mb-1">
+                    Development reset link (SMTP not configured)
+                  </p>
+                  <a
+                    href={resetLink}
+                    className="text-sm text-blue-700 break-all underline"
+                  >
+                    {resetLink}
+                  </a>
+                </div>
+              )}
+            </div>
           ) : (
             <>
               {error && <Alert type="error" className="mb-4">{error}</Alert>}
