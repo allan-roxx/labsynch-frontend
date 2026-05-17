@@ -19,71 +19,6 @@ function StatCard({ label, value, sub }) {
   );
 }
 
-function LiabilityPaymentModal({ liabilities, onClose, onSettled }) {
-  const [payingId, setPayingId] = useState('');
-  const [error, setError] = useState('');
-
-  const handleSettle = async (item) => {
-    setPayingId(item.id);
-    setError('');
-    try {
-      await damagesApi.settle(item.id, {
-        amount_paid: item.amount_outstanding,
-      });
-      await onSettled();
-    } catch (err) {
-      setError(err?.message || 'Failed to settle liability. Please try again.');
-    } finally {
-      setPayingId('');
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">Settle Damage Liabilities</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
-        </div>
-        <div className="px-6 py-5 space-y-4">
-          {error && (
-            <div className="px-3 py-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>
-          )}
-
-          {liabilities.length === 0 ? (
-            <p className="text-sm text-gray-500">No outstanding liabilities found.</p>
-          ) : (
-            <div className="space-y-3">
-              {liabilities.map((item) => (
-                <div key={item.id} className="border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{item.equipment_name}</p>
-                    <p className="text-xs text-gray-500">Booking {item.booking_reference}</p>
-                    <p className="text-xs text-gray-500 mt-1">{item.description}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">Outstanding</p>
-                    <p className="text-sm font-semibold text-red-700">
-                      KES {parseFloat(item.amount_outstanding || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 })}
-                    </p>
-                    <button
-                      onClick={() => handleSettle(item)}
-                      disabled={payingId === item.id}
-                      className="mt-2 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                    >
-                      {payingId === item.id ? 'Processing…' : 'Pay & Settle'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function SchoolHomePage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -93,7 +28,6 @@ export default function SchoolHomePage() {
   const [liabilities, setLiabilities] = useState([]);
   const [schoolProfile, setSchoolProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showLiabilityModal, setShowLiabilityModal] = useState(false);
 
   const fetchDashboardData = async () => {
     const [bRes, pRes, spRes, dRes] = await Promise.all([
@@ -168,12 +102,7 @@ export default function SchoolHomePage() {
               </Link>
             </p>
             {liabilities.length > 0 && (
-              <button
-                onClick={() => setShowLiabilityModal(true)}
-                className="mt-2 px-3 py-1.5 text-xs font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700"
-              >
-                Settle Liabilities
-              </button>
+              <p className="mt-2 text-xs text-red-700 font-medium">Open the affected booking and pay to settle liability.</p>
             )}
           </div>
         </div>
@@ -262,17 +191,6 @@ export default function SchoolHomePage() {
           </table>
         </div>
       </div>
-
-      {showLiabilityModal && (
-        <LiabilityPaymentModal
-          liabilities={liabilities}
-          onClose={() => setShowLiabilityModal(false)}
-          onSettled={async () => {
-            await fetchDashboardData();
-            setShowLiabilityModal(false);
-          }}
-        />
-      )}
     </div>
   );
 }
