@@ -111,6 +111,7 @@ export const damagesApi = {
   create: (data) => client.post('/api/damages/', data),
   update: (id, data) => client.patch(`/api/damages/${id}/`, data),
   resolve: (id, data) => client.post(`/api/damages/${id}/resolve/`, data),
+  settle: (id, data) => client.post(`/api/damages/${id}/settle/`, data),
 };
 
 export const maintenanceApi = {
