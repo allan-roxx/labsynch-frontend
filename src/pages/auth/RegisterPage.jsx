@@ -234,7 +234,7 @@ export default function RegisterPage() {
               </p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Input id="contact_person" name="contact_person" label="Contact person"
-                  placeholder="Head of Science" value={form.contact_person} onChange={handleChange}
+                  placeholder="Johnson Ouma" value={form.contact_person} onChange={handleChange}
                   error={fieldErrors.contact_person} />
                 <Input id="contact_designation" name="contact_designation" label="Designation"
                   placeholder="Lab Coordinator" value={form.contact_designation} onChange={handleChange}

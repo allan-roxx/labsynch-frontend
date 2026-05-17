@@ -95,8 +95,7 @@ export default function SchoolLayout() {
     async function poll() {
       try {
         const res = await notificationsApi.unreadCount();
-        const payload = res?.data ?? res;
-        if (!cancelled) setUnreadCount(payload?.unread_count ?? 0);
+        if (!cancelled) setUnreadCount(res?.data?.unread_count ?? 0);
       } catch {
         // silently ignore — don't break the layout on network errors
       }
