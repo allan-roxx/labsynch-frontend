@@ -33,12 +33,18 @@ const COUNTY_REGEX = /^[A-Za-z][A-Za-z\s'.-]{1,58}$/;
 const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
 
 function normalizePhoneNumber(value) {
-  return (value || '').replace(/[\s()-]/g, '');
+  return (value || '').trim();
 }
 
 function isValidKenyaPhone(value) {
   const phone = normalizePhoneNumber(value);
-  return /^(\+2547\d{8}|2547\d{8}|07\d{8})$/.test(phone);
+  if (!/^\+?\d+$/.test(phone)) return false;
+
+  if (phone.startsWith('+2547')) return phone.length === 13;
+  if (phone.startsWith('2547')) return phone.length === 12;
+  if (phone.startsWith('07')) return phone.length === 10;
+
+  return false;
 }
 
 export default function RegisterPage() {
@@ -52,7 +58,27 @@ export default function RegisterPage() {
   const [devVerifyUrl, setDevVerifyUrl] = useState('');
 
   const handleChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+
+    if (name === 'email') {
+      setForm((prev) => ({ ...prev, [name]: value.toLowerCase() }));
+      setFieldErrors((prev) => ({ ...prev, [name]: '' }));
+      return;
+    }
+
+    if (name === 'phone_number') {
+      // Allow only digits and a single leading '+' for international format.
+      let sanitized = value.replace(/[^\d+]/g, '');
+      if (sanitized.includes('+')) {
+        sanitized = `${sanitized.startsWith('+') ? '+' : ''}${sanitized.replace(/\+/g, '')}`;
+      }
+
+      setForm((prev) => ({ ...prev, [name]: sanitized }));
+      setFieldErrors((prev) => ({ ...prev, [name]: '' }));
+      return;
+    }
+
+    setForm((prev) => ({ ...prev, [name]: value }));
     setFieldErrors((prev) => ({ ...prev, [e.target.name]: '' }));
   };
 
@@ -80,8 +106,10 @@ export default function RegisterPage() {
 
     if (!form.phone_number.trim()) {
       errors.phone_number = 'Phone number is required.';
+    } else if (!/^\+?\d+$/.test(form.phone_number.trim())) {
+      errors.phone_number = 'Phone number can only contain digits and an optional leading +.';
     } else if (!isValidKenyaPhone(form.phone_number)) {
-      errors.phone_number = 'Use a valid Kenyan phone number (e.g. +254712345678).';
+      errors.phone_number = 'Use 07XXXXXXXX (10), 2547XXXXXXXX (12), or +2547XXXXXXXX (13).';
     }
 
     if (!form.password) {
@@ -129,7 +157,7 @@ export default function RegisterPage() {
     try {
       // Step 1 — Create the account (only sends fields the endpoint accepts)
       const registrationPayload = {
-        email:               form.email.trim(),
+        email:               form.email.trim().toLowerCase(),
         password:            form.password,
         confirm_password:    form.confirm_password,
         full_name:           form.full_name.trim(),
@@ -152,7 +180,7 @@ export default function RegisterPage() {
       const hasExtraFields = Object.keys(PROFILE_FIELDS).some((k) => form[k]?.trim());
       if (hasExtraFields) {
         try {
-          const loginRes = await authApi.login({ email: form.email, password: form.password });
+          const loginRes = await authApi.login({ email: form.email.trim().toLowerCase(), password: form.password });
           // The login endpoint returns tokens inside data.tokens per AGENTS.md
           const tokens = loginRes?.data?.tokens ?? loginRes?.tokens ?? loginRes?.data;
           if (tokens?.access) {

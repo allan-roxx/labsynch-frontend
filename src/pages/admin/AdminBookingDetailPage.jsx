@@ -249,19 +249,30 @@ function IssuanceModal({ booking, onClose, onDone }) {
 }
 
 
-// ── Confirm Delivery Modal (DISPATCHED → IN_USE, no user required) ─────────
+// ── Confirm Delivery Modal (DISPATCHED → IN_USE) ────────────────────────────
 function ConfirmDeliveryModal({ booking, onClose, onDone }) {
   const [notes, setNotes]   = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr]       = useState('');
 
+  const recipientName = booking.school_user_name || booking.school_name || 'Booking school';
+  const recipientEmail = booking.school_user_email || '';
+  const recipientId = booking.school_user_id || booking.school_profile?.user?.id || null;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!recipientId) {
+      setErr('Cannot confirm delivery: school recipient account is missing on this booking.');
+      return;
+    }
+
     setSaving(true);
     setErr('');
     try {
       await issuancesApi.create({
         booking:     booking.id,
+        received_by: recipientId,
         issue_notes: notes || 'Equipment delivered by transport.',
       });
       onDone();
@@ -287,6 +298,15 @@ function ConfirmDeliveryModal({ booking, onClose, onDone }) {
         </div>
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           {err && <div className="px-3 py-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{err}</div>}
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Delivered to</label>
+            <div className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+              <div className="font-medium text-gray-900">{recipientName}</div>
+              {recipientEmail && <div className="text-xs text-gray-500">{recipientEmail}</div>}
+            </div>
+          </div>
+
           <p className="text-sm text-gray-600">
             Confirm that the equipment has been delivered to the school via LabSynch transport. This will move the booking to <strong>IN USE</strong>.
           </p>
@@ -303,7 +323,7 @@ function ConfirmDeliveryModal({ booking, onClose, onDone }) {
           <div className="flex gap-3 pt-1">
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || !recipientId}
               className="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
             >
               {saving ? 'Confirming…' : 'Confirm Delivery'}
