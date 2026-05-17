@@ -118,6 +118,14 @@ function stepIndex(status) {
   return idx === -1 ? 0 : idx;
 }
 
+function getBookingRecipient(booking) {
+  const schoolUserId = booking?.school_user_id || booking?.school_profile?.user?.id || null;
+  const recipientName = booking?.school_user_name || booking?.school_name || 'Booking school';
+  const recipientEmail = booking?.school_user_email || booking?.school_profile?.user?.email || '';
+
+  return { schoolUserId, recipientName, recipientEmail };
+}
+
 function ProgressStepper({ status }) {
   const current = stepIndex(status);
   const isCancelled = status === 'CANCELLED';
@@ -175,8 +183,7 @@ function IssuanceModal({ booking, onClose, onDone }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr]       = useState('');
 
-  const recipientName = booking.school_user_name || booking.school_name || 'Booking school';
-  const recipientEmail = booking.school_user_email || '';
+  const { schoolUserId, recipientName, recipientEmail } = getBookingRecipient(booking);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -185,7 +192,7 @@ function IssuanceModal({ booking, onClose, onDone }) {
     try {
       await issuancesApi.create({
         booking:     booking.id,
-        received_by: booking.school_user_id,
+        received_by: schoolUserId,
         issue_notes: notes,
       });
       onDone();
@@ -232,7 +239,7 @@ function IssuanceModal({ booking, onClose, onDone }) {
           <div className="flex gap-3 pt-1">
             <button
               type="submit"
-              disabled={saving || !booking.school_user_id}
+              disabled={saving || !schoolUserId}
               className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
               {saving ? 'Issuing…' : 'Confirm Issuance'}
@@ -255,9 +262,7 @@ function ConfirmDeliveryModal({ booking, onClose, onDone }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr]       = useState('');
 
-  const recipientName = booking.school_user_name || booking.school_name || 'Booking school';
-  const recipientEmail = booking.school_user_email || '';
-  const recipientId = booking.school_user_id || booking.school_profile?.user?.id || null;
+  const { schoolUserId: recipientId, recipientName, recipientEmail } = getBookingRecipient(booking);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -347,8 +352,7 @@ function ReturnModal({ booking, onClose, onDone }) {
   const [saving, setSaving]   = useState(false);
   const [err, setErr]         = useState('');
 
-  const returnerName = booking.school_user_name || booking.school_name || 'Booking school';
-  const returnerEmail = booking.school_user_email || '';
+  const { schoolUserId: returnerId, recipientName: returnerName, recipientEmail: returnerEmail } = getBookingRecipient(booking);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -357,7 +361,7 @@ function ReturnModal({ booking, onClose, onDone }) {
     try {
       await returnsApi.create({
         booking:      booking.id,
-        returned_by:  booking.school_user_id,
+        returned_by:  returnerId,
         return_notes: notes,
         has_damage:   hasDamage,
       });
@@ -414,7 +418,7 @@ function ReturnModal({ booking, onClose, onDone }) {
           <div className="flex gap-3 pt-1">
             <button
               type="submit"
-              disabled={saving || !booking.school_user_id}
+              disabled={saving || !returnerId}
               className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
               {saving ? 'Recording…' : 'Confirm Return'}
