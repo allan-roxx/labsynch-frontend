@@ -12,7 +12,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
-import { notificationsApi } from '../api/endpoints';
+import { notificationsApi, damagesApi } from '../api/endpoints';
 
 const NAV_ITEMS = [
   {
@@ -53,6 +53,16 @@ const NAV_ITEMS = [
     ),
   },
   {
+    label: 'Liabilities',
+    to: '/school/liabilities',
+    showBadge: true,
+    icon: (
+      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+    ),
+  },
+  {
     label: 'My Profile',
     to: '/school/profile',
     icon: (
@@ -87,7 +97,25 @@ export default function SchoolLayout() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [liabilityCount, setLiabilityCount] = useState(0);
   const profileRef = useRef(null);
+
+  // Fetch outstanding liability count once on mount
+  useEffect(() => {
+    damagesApi.list({ page_size: 100 })
+      .then((res) => {
+        const data = res?.data ?? res;
+        const all  = data?.results ?? (Array.isArray(data) ? data : []);
+        setLiabilityCount(
+          all.filter((d) => {
+            const status      = d.resolution_status ?? 'PENDING';
+            const outstanding = parseFloat(d.amount_outstanding ?? 0);
+            return ['PENDING', 'CHARGED'].includes(status) && outstanding > 0;
+          }).length,
+        );
+      })
+      .catch(() => {});
+  }, []);
 
   // Poll unread notification count every 30 seconds
   useEffect(() => {
@@ -160,7 +188,12 @@ export default function SchoolLayout() {
               }
             >
               {item.icon}
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {item.showBadge && liabilityCount > 0 && (
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                  {liabilityCount > 9 ? '9+' : liabilityCount}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

@@ -97,13 +97,10 @@ export default function SchoolHomePage() {
             </p>
             <p className="mt-0.5 text-sm text-red-700">
               You have unresolved damage liabilities. New bookings are blocked until resolved.{' '}
-              <Link to="/school/bookings" className="underline font-medium">
-                View Bookings →
+              <Link to="/school/liabilities" className="underline font-medium">
+                Go to Liabilities →
               </Link>
             </p>
-            {liabilities.length > 0 && (
-              <p className="mt-2 text-xs text-red-700 font-medium">Open the affected booking and pay to settle liability.</p>
-            )}
           </div>
         </div>
       )}

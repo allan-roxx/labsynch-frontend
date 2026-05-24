@@ -179,85 +179,6 @@ function PaymentModal({ booking, onClose, onSuccess }) {
   );
 }
 
-function DamageSettlementModal({ damages, onClose, onSuccess }) {
-  const [phone, setPhone] = useState('');
-  const [payingId, setPayingId] = useState('');
-  const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
-
-  const handleSettle = async (damage) => {
-    if (!phone.trim()) {
-      setError('Please enter your M-Pesa phone number.');
-      return;
-    }
-    setError('');
-    setSuccessMessage('');
-    setPayingId(damage.id);
-    try {
-      await damagesApi.settle(damage.id, { phone_number: phone });
-      setSuccessMessage('STK Push sent. Complete payment on your phone to settle liability.');
-      setTimeout(() => onSuccess(), 2500);
-    } catch (err) {
-      setError(err?.message || 'Failed to initiate damage settlement payment.');
-    } finally {
-      setPayingId('');
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-2xl mx-4 p-6 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-gray-900 text-lg">Settle Damage Liability</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
-        </div>
-
-        {error && (
-          <div className="mb-3 px-3 py-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>
-        )}
-        {successMessage && (
-          <div className="mb-3 px-3 py-2 bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg">{successMessage}</div>
-        )}
-
-        <label className="block text-sm font-medium text-gray-700 mb-1">M-Pesa Phone Number</label>
-        <input
-          type="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="e.g. 254712345678"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-
-        <div className="space-y-3">
-          {damages.map((damage) => (
-            <div key={damage.id} className="border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">{damage.equipment_name}</p>
-                <p className="text-xs text-gray-500">Damage: {damage.description}</p>
-                <p className="text-xs text-gray-500">Status: {damage.resolution_status}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-gray-500">Outstanding</p>
-                <p className="text-sm font-semibold text-red-700">
-                  KES {parseFloat(damage.amount_outstanding || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => handleSettle(damage)}
-                  disabled={payingId === damage.id}
-                  className="mt-2 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                >
-                  {payingId === damage.id ? 'Sending…' : 'Pay via M-Pesa'}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // -----------------------------------------------------------------------------
 // Main page
 // -----------------------------------------------------------------------------
@@ -270,7 +191,6 @@ export default function SchoolBookingDetailPage() {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelError, setCancelError] = useState('');
   const [showPayModal, setShowPayModal] = useState(false);
-  const [showDamagePayModal, setShowDamagePayModal] = useState(false);
   const [downloadingContract, setDownloadingContract] = useState(false);
 
   useEffect(() => {
@@ -449,12 +369,12 @@ export default function SchoolBookingDetailPage() {
             </button>
           )}
           {unresolvedDamages.length > 0 && (
-            <button
-              onClick={() => setShowDamagePayModal(true)}
+            <Link
+              to="/school/liabilities"
               className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors"
             >
               Settle Damage Liability
-            </button>
+            </Link>
           )}
         </div>
       </div>
@@ -755,28 +675,6 @@ export default function SchoolBookingDetailPage() {
           booking={booking}
           onClose={() => setShowPayModal(false)}
           onSuccess={handlePaymentSuccess}
-        />
-      )}
-      {showDamagePayModal && (
-        <DamageSettlementModal
-          damages={unresolvedDamages}
-          onClose={() => setShowDamagePayModal(false)}
-          onSuccess={async () => {
-            setShowDamagePayModal(false);
-            try {
-              const [updatedBooking, updatedProfile, updatedDamages] = await Promise.all([
-                bookingsApi.retrieve(id),
-                usersApi.mySchoolProfile(),
-                damagesApi.list({ equipment_return__booking: id, page_size: 100 }),
-              ]);
-              setBooking(updatedBooking?.data ?? updatedBooking);
-              setSchoolProfile(updatedProfile?.data ?? updatedProfile);
-              const dp = updatedDamages?.data ?? updatedDamages;
-              setBookingDamages(dp?.results ?? (Array.isArray(dp) ? dp : []));
-            } catch {
-              /* keep current state */
-            }
-          }}
         />
       )}
     </div>
