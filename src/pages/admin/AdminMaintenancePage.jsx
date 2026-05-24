@@ -299,7 +299,7 @@ function MaintenanceModal({ initial, onClose, onSaved }) {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Page ─────
 export default function AdminMaintenancePage() {
   const [records, setRecords]       = useState([]);
   const [loading, setLoading]       = useState(true);

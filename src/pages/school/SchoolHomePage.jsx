@@ -61,7 +61,7 @@ export default function SchoolHomePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // ── Stats ──────────────────────────────────────────────────────────────────
+  // ── Stats ─
   const activeBookings = bookings.filter((b) => ACTIVE_STATUSES.has(b.status));
   const completedBookings = bookings.filter((b) => b.status === 'COMPLETED' || b.status === 'IN_USE');
 

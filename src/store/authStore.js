@@ -8,7 +8,7 @@ import { create } from 'zustand';
 import { authApi, usersApi } from '../api/endpoints';
 
 const useAuthStore = create((set, get) => ({
-  // ── State ──────────────────────────────────────────────────────────────────
+  // ── State ─
   user: null,           // UserRead object from /api/users/me/
   accessToken: localStorage.getItem('access_token') ?? null,
   refreshToken: localStorage.getItem('refresh_token') ?? null,

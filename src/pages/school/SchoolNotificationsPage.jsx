@@ -112,7 +112,7 @@ const FILTER_OPTIONS = [
   { label: 'Penalties', value: 'PENALTY_CLEARED' },
 ];
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ── Main Page 
 export default function SchoolNotificationsPage() {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);

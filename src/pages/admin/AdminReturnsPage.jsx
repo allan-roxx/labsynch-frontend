@@ -727,7 +727,7 @@ function DamagesTab({ initialReturn = null, onClearInitialReturn }) {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Page ─────
 export default function AdminReturnsPage() {
   const [activeTab, setActiveTab]         = useState('returns');
   const [logDamageReturn, setLogDamageReturn] = useState(null);

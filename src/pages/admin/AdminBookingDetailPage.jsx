@@ -434,7 +434,7 @@ function ReturnModal({ booking, onClose, onDone }) {
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── Main page 
 export default function AdminBookingDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();

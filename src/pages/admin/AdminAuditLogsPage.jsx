@@ -57,7 +57,7 @@ function ChangesModal({ log, onClose }) {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Page ─────
 export default function AdminAuditLogsPage() {
   const [logs, setLogs]               = useState([]);
   const [loading, setLoading]         = useState(true);
